@@ -66,7 +66,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isActive) return;
-    setLoading(true);
+    // Only show spinner on first load; silently refresh when data already cached
+    if (!data) setLoading(true);
     fetch('/api/dashboard?t=' + Date.now())
       .then((r) => r.json())
       .then((d) => setData(d))

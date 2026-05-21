@@ -25,7 +25,7 @@ export default function PricingPage() {
 
   const fetchData = async () => {
     if (!user?.id) return;
-    setLoading(true);
+    if (plans.length === 0) setLoading(true);
     try {
       const [plansRes, subRes] = await Promise.all([
         fetch('/api/plans?t=' + Date.now()),

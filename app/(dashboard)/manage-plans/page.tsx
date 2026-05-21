@@ -23,17 +23,18 @@ export default function ManagePlansPage() {
     order: 0,
   });
 
-  const fetchPlans = async () => {
+  const fetchPlans = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch('/api/plans?all=true&t=' + Date.now());
       if (res.ok) setPlans(await res.json());
     } catch (e) {}
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   useEffect(() => {
     if (isActive) {
-      fetchPlans();
+      fetchPlans(plans.length > 0);
     }
   }, [isActive]);
 

@@ -41,7 +41,8 @@ export default function ManageUsersPage() {
     setCustomAmount('0');
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch('/api/users?t=' + Date.now());
       if (res.ok) {
@@ -51,7 +52,7 @@ export default function ManageUsersPage() {
     } catch (e) {
       console.error('Failed to load users');
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const fetchPlans = async () => {
@@ -78,8 +79,9 @@ export default function ManageUsersPage() {
 
   useEffect(() => {
     if (isActive) {
+      const hasData = users.length > 0;
       const t = setTimeout(() => {
-        fetchUsers();
+        fetchUsers(hasData);
         fetchPlans();
         fetchSubscriptions();
       }, 10);

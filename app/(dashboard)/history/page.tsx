@@ -39,7 +39,7 @@ export default function HistoryPage() {
     if (!isActive) return;
     
     const fetchReports = async () => {
-      setLoading(true);
+      if (reports.length === 0) setLoading(true);
       try {
         const params = new URLSearchParams();
         if (debouncedSearch) params.append('search', debouncedSearch);
