@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Cormorant_Garamond } from 'next/font/google';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 
 const inter = Inter({ 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-[#f8fafc] text-slate-800 antialiased min-h-screen flex flex-col font-sans" suppressHydrationWarning>
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
