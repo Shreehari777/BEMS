@@ -3,6 +3,9 @@ import dbConnect from '@/lib/db';
 import SubscriptionPlan from '@/lib/models/SubscriptionPlan';
 import Payment from '@/lib/models/Payment';
 
+// Prevent Next.js/Turbopack from evaluating this route at build time
+export const dynamic = 'force-dynamic';
+
 // Lazy initialize Razorpay client using dynamic import to avoid build-time module evaluation errors
 async function getRazorpayInstance() {
   const key_id = process.env.RAZORPAY_KEY_ID;
