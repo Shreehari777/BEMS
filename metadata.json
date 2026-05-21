@@ -1,0 +1,6 @@
+{
+  "name": "BEMS",
+  "description": "Batch Entry Management System (BEMS) for batching plant operators. Features dashboard, customer and vehicle management, recipe editing, history reports, and real-time batch entry forms.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
