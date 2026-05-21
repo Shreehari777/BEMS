@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import SubscriptionPlan from '@/lib/models/SubscriptionPlan';
 import Payment from '@/lib/models/Payment';
-import Razorpay from 'razorpay';
 
-// Lazy initialize Razorpay client to avoid build-time errors when credentials are not in the environment
-function getRazorpayInstance() {
+// Lazy initialize Razorpay client using dynamic import to avoid build-time module evaluation errors
+async function getRazorpayInstance() {
   const key_id = process.env.RAZORPAY_KEY_ID;
   const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
@@ -13,6 +12,7 @@ function getRazorpayInstance() {
     throw new Error('Razorpay credentials are not configured.');
   }
 
+  const Razorpay = (await import('razorpay')).default;
   return new Razorpay({
     key_id,
     key_secret,
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     }
 
     // Create Razorpay order
-    const razorpay = getRazorpayInstance();
+    const razorpay = await getRazorpayInstance();
     const order = await razorpay.orders.create({
       amount: plan.price * 100, // Razorpay uses paise
       currency: 'INR',
