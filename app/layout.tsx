@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Cormorant_Garamond } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import Script from 'next/script';
 import './globals.css';
 
 const inter = Inter({ 
@@ -22,11 +23,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${cormorant.variable}`}>
-      <head>
-        <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
-      </head>
+      <head></head>
       <body className="bg-[#f8fafc] text-slate-800 antialiased min-h-screen flex flex-col font-sans" suppressHydrationWarning>
         {children}
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="beforeInteractive" />
         <SpeedInsights />
       </body>
     </html>

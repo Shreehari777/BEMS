@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useContext } from 'react';
-import { Loader2, UserPlus, Trash2, Shield, User, Eye, EyeOff, CreditCard, X, Check, Clock } from 'lucide-react';
+import { Loader2, UserPlus, Trash2, Shield, User, Eye, EyeOff, CreditCard, X, Check, Clock, KeyRound } from 'lucide-react';
 import { TabContext } from '@/lib/TabContext';
 
 export default function ManageUsersPage() {
@@ -15,6 +15,13 @@ export default function ManageUsersPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ username: '', password: '', displayName: '' });
   const [error, setError] = useState('');
+
+  // Reset password state
+  const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [resetUsername, setResetUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // Manual activation state
   const [plans, setPlans] = useState<any[]>([]);
@@ -154,6 +161,35 @@ export default function ManageUsersPage() {
       setUsers(prev => prev.map(u => u._id === id ? { ...u, isActive: currentStatus } : u));
       alert('Failed to update user status');
     }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUserId || !newPassword) return;
+    if (newPassword.length < 4) {
+      alert('Password must be at least 4 characters');
+      return;
+    }
+    setResetting(true);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: resetUserId, resetPassword: true, password: newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Password reset successfully for "${resetUsername}"`);
+        setResetUserId(null);
+        setResetUsername('');
+        setNewPassword('');
+        setShowNewPassword(false);
+      } else {
+        alert(data.error || 'Failed to reset password');
+      }
+    } catch (e) {
+      alert('Failed to reset password');
+    }
+    setResetting(false);
   };
 
   const handleManualActivate = async () => {
@@ -658,6 +694,81 @@ export default function ManageUsersPage() {
         );
       })()}
 
+      {/* Reset Password Modal */}
+      {resetUserId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => { setResetUserId(null); setNewPassword(''); setShowNewPassword(false); }}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 overflow-hidden animate-in">
+            <button
+              onClick={() => { setResetUserId(null); setNewPassword(''); setShowNewPassword(false); }}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-11 h-11 rounded-full bg-amber-500 flex items-center justify-center text-white">
+                <KeyRound className="w-5.5 h-5.5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-lg">Reset Password</h3>
+                <p className="text-xs text-slate-500">
+                  For: <strong className="text-slate-700">{resetUsername}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min. 4 characters"
+                    minLength={4}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm pr-10"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={handleResetPassword}
+                disabled={!newPassword || newPassword.length < 4 || resetting}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-[0.98] shadow-sm shadow-amber-200"
+              >
+                {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                Reset Password
+              </button>
+            </div>
+
+            <style jsx>{`
+              .animate-in {
+                animation: popIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+              }
+              @keyframes popIn {
+                from { opacity: 0; transform: scale(0.96) translateY(8px); }
+                to { opacity: 1; transform: scale(1) translateY(0); }
+              }
+            `}</style>
+          </div>
+        </div>
+      )}
+
       {/* Users List */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full">
@@ -763,6 +874,18 @@ export default function ManageUsersPage() {
                               title={hasSub ? "Manage subscription / Edit remaining days" : "Activate subscription (offline payment)"}
                             >
                               <CreditCard className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setResetUserId(user._id);
+                                setResetUsername(user.displayName || user.username);
+                                setNewPassword('');
+                                setShowNewPassword(false);
+                              }}
+                              className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                              title="Reset password"
+                            >
+                              <KeyRound className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(user._id, user.username)}

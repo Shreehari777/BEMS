@@ -86,10 +86,11 @@ export async function DELETE(req: Request) {
 // PATCH — Toggle user active status (admin only) + freeze/unfreeze subscription days
 export async function PATCH(req: Request) {
   try {
-    const { id, isActive } = await req.json();
+    const body = await req.json();
+    const { id } = body;
 
-    if (!id || typeof isActive !== 'boolean') {
-      return NextResponse.json({ error: 'User ID and isActive (boolean) are required' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
     await dbConnect();
@@ -97,6 +98,26 @@ export async function PATCH(req: Request) {
     const user = await User.findById(id);
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // --- Reset Password ---
+    if (body.resetPassword) {
+      const newPassword = body.password;
+      if (!newPassword || newPassword.length < 4) {
+        return NextResponse.json({ error: 'Password must be at least 4 characters' }, { status: 400 });
+      }
+      if (user.role === 'admin') {
+        return NextResponse.json({ error: 'Cannot reset admin password from here' }, { status: 403 });
+      }
+      user.password = newPassword; // pre-save hook will hash it
+      await user.save();
+      return NextResponse.json({ success: true, message: 'Password reset successfully' });
+    }
+
+    // --- Toggle Active Status ---
+    const { isActive } = body;
+    if (typeof isActive !== 'boolean') {
+      return NextResponse.json({ error: 'isActive (boolean) is required' }, { status: 400 });
     }
 
     if (user.role === 'admin') {
