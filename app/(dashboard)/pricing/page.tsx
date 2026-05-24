@@ -92,7 +92,7 @@ export default function PricingPage() {
         key: orderData.razorpayKeyId,
         amount: orderData.amount,
         currency: 'INR',
-        name: 'SURJAN RMC',
+        name: 'BEMS',
         description: `${plan.name} Subscription`,
         order_id: orderData.orderId,
         handler: async (response: any) => {
@@ -222,7 +222,7 @@ export default function PricingPage() {
         <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-1">
           {isSubscribed ? 'Upgrade or Renew' : 'Choose Your Plan'}
         </h2>
-        <p className="text-sm text-gray-500 mb-6">Select a plan to get full access to SURJAN RMC Software.</p>
+        <p className="text-sm text-gray-500 mb-6">Select a plan to get full access to BEMS Software.</p>
 
         {plans.length === 0 ? (
           <div className="text-center py-12 text-slate-500 text-sm bg-white rounded-xl border border-slate-200">

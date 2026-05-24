@@ -2,39 +2,94 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { Loader2, Save, Edit2, X } from 'lucide-react';
 
-const Invoice = ({ report, rate, setRate, onSave, editing, setEditing, saving }: any) => {
+function safeFormatDate(dateVal: any, formatStr: string): string {
+  if (!dateVal) return '';
+  try {
+    const d = new Date(dateVal);
+    if (isValid(d)) {
+      return format(d, formatStr);
+    }
+  } catch (e) {
+    // ignore
+  }
+  return String(dateVal);
+}
+
+const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, value: any) => void }) => {
   if (!report) return null;
   const quantity = Number(report.quantity || 0);
+  const rate = Number(report.rate || 0);
   const amount = quantity * rate;
   const sgst = amount * 0.09;
   const cgst = amount * 0.09;
   const grandTotal = amount + sgst + cgst;
 
+  const firstLetter = (report.companyName || 'MATRIX')[0].toUpperCase();
+
   return (
     <div className="w-full bg-white p-12 print:p-0 print:shadow-none print:border-none print:w-full" style={{ minHeight: '297mm', fontFamily: '"Times New Roman", Times, serif' }}>
       {/* Invoice Header */}
       <div className="flex justify-between items-start border-b-2 border-gray-100 pb-8 mb-8">
-        <div className="flex gap-4">
-          <div className="w-20 h-20 rounded-full border-4 border-[#990000] flex items-center justify-center bg-white shadow-sm overflow-hidden">
-            <span className="text-[#990000] font-bold text-4xl" style={{ transform: 'scaleX(1.2)' }}>M</span>
+        <div className="flex gap-4 items-center">
+          <div className="w-20 h-20 rounded-full border-4 border-[#990000] flex items-center justify-center bg-white shadow-sm overflow-hidden flex-shrink-0">
+            <span className="text-[#990000] font-bold text-4xl" style={{ transform: 'scaleX(1.2)' }}>{firstLetter}</span>
           </div>
-          <div>
-            <h1 className="text-3xl font-black text-[#990000] tracking-tight uppercase leading-none">MATRIX INFRA RMC</h1>
-            <p className="text-sm font-bold text-[#990000] mt-1 italic">Suppliers : All Types of Ready Mix Concrete</p>
-            <div className="text-[11px] text-gray-500 mt-2 max-w-xs leading-relaxed">
-               Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.<br/>
-               Mob.: 9325714072 | 9405818311
+          <div className="flex-1 min-w-[300px]">
+            <input 
+              type="text" 
+              value={report.companyName || 'MATRIX INFRA RMC'} 
+              onChange={(e) => onChange('companyName', e.target.value)}
+              className="invoice-input text-3xl font-black text-[#990000] tracking-tight uppercase leading-none w-full"
+            />
+            <input 
+              type="text" 
+              value={report.companyTagline || 'Suppliers : All Types of Ready Mix Concrete'} 
+              onChange={(e) => onChange('companyTagline', e.target.value)}
+              className="invoice-input text-sm font-bold text-[#990000] mt-1 italic w-full"
+            />
+            <div className="text-[11px] text-gray-500 mt-2 max-w-xs leading-relaxed font-sans">
+               <textarea 
+                 value={report.companyAddress || 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.'} 
+                 onChange={(e) => onChange('companyAddress', e.target.value)}
+                 className="invoice-input text-[11px] text-gray-500 mt-1 max-w-xs leading-relaxed font-sans w-full border-none outline-none resize-none bg-transparent"
+                 rows={2}
+               />
+               <input 
+                 type="text" 
+                 value={report.companyMobile || 'Mob.: 9325714072 | 9405818311'} 
+                 onChange={(e) => onChange('companyMobile', e.target.value)}
+                 className="invoice-input text-[11px] text-gray-500 font-sans w-full"
+               />
             </div>
           </div>
         </div>
         <div className="text-right">
           <h2 className="text-4xl font-extrabold text-gray-200 uppercase tracking-widest -mt-2">INVOICE</h2>
           <div className="mt-4 space-y-1">
-            <div className="text-sm"><span className="font-bold text-gray-500">Invoice No:</span> <span className="font-mono text-gray-900">BR-{report.docketNumber}</span></div>
-            <div className="text-sm"><span className="font-bold text-gray-500">Date:</span> <span className="text-gray-900">{format(new Date(report.date), 'dd/MM/yyyy')}</span></div>
+            <div className="text-sm">
+              <span className="font-bold text-gray-500">Invoice No:</span>{' '}
+              <span className="font-mono text-gray-900">
+                BR-
+                <input 
+                  type="number"
+                  value={report.docketNumber || ''}
+                  onChange={(e) => onChange('docketNumber', Number(e.target.value))}
+                  className="invoice-input font-mono font-bold text-gray-900 w-20"
+                />
+              </span>
+            </div>
+            <div className="text-sm">
+              <span className="font-bold text-gray-500">Date:</span>{' '}
+              <input 
+                type="text"
+                value={report.date ? safeFormatDate(report.date, 'dd/MM/yyyy') : ''}
+                onChange={(e) => onChange('date', e.target.value)}
+                className="invoice-input text-gray-900 w-24 font-bold"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -42,15 +97,49 @@ const Invoice = ({ report, rate, setRate, onSave, editing, setEditing, saving }:
       {/* Info */}
       <div className="grid grid-cols-2 gap-12 mb-10">
         <div>
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Bill To</h3>
-          <p className="text-xl font-bold text-gray-900">{report.customerName}</p>
-          <p className="text-gray-600 mt-1">{report.site}</p>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 font-sans">Bill To</h3>
+          <input 
+            type="text"
+            value={report.customerName || ''}
+            onChange={(e) => onChange('customerName', e.target.value)}
+            className="invoice-input text-xl font-bold text-gray-900 w-full"
+          />
+          <input 
+            type="text"
+            value={report.site || ''}
+            onChange={(e) => onChange('site', e.target.value)}
+            className="invoice-input text-gray-600 mt-1 w-full"
+          />
         </div>
         <div className="text-right">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Project Details</h3>
-          <p className="text-gray-900 font-bold"><span className="text-gray-500 font-medium">Grade & Mix:</span> {report.grade}</p>
-          <p className="text-gray-600"><span className="text-gray-500 font-medium">Docket:</span> #{report.docketNumber}</p>
-          <p className="text-gray-600"><span className="text-gray-500 font-medium">Vehicle:</span> {report.vehicleNumber}</p>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 font-sans">Project Details</h3>
+          <p className="text-gray-900 font-bold">
+            <span className="text-gray-500 font-medium font-sans">Grade & Mix:</span>{' '}
+            <input 
+              type="text"
+              value={report.grade || ''}
+              onChange={(e) => onChange('grade', e.target.value)}
+              className="invoice-input text-gray-900 font-bold w-48 text-right"
+            />
+          </p>
+          <p className="text-gray-600">
+            <span className="text-gray-500 font-medium font-sans">Docket:</span>{' '}
+            <input 
+              type="number"
+              value={report.docketNumber || ''}
+              onChange={(e) => onChange('docketNumber', Number(e.target.value))}
+              className="invoice-input text-gray-600 w-20 text-right font-bold"
+            />
+          </p>
+          <p className="text-gray-600">
+            <span className="text-gray-500 font-medium font-sans">Vehicle:</span>{' '}
+            <input 
+              type="text"
+              value={report.vehicleNumber || ''}
+              onChange={(e) => onChange('vehicleNumber', e.target.value)}
+              className="invoice-input text-gray-600 w-28 text-right font-bold"
+            />
+          </p>
         </div>
       </div>
 
@@ -58,7 +147,7 @@ const Invoice = ({ report, rate, setRate, onSave, editing, setEditing, saving }:
       <div className="mb-10">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider font-bold">
+            <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider font-bold font-sans">
               <th className="px-4 py-3 text-left border-b-2 border-gray-200">Description</th>
               <th className="px-4 py-3 text-right border-b-2 border-gray-200">Qty (m³)</th>
               <th className="px-4 py-3 text-right border-b-2 border-gray-200">Rate (₹)</th>
@@ -69,43 +158,25 @@ const Invoice = ({ report, rate, setRate, onSave, editing, setEditing, saving }:
             <tr>
               <td className="px-4 py-6 text-gray-800">
                 <p className="font-bold text-lg leading-tight">Ready Mix Concrete - {report.grade}</p>
-                <p className="text-sm text-gray-500 mt-1">Ref: {report.docketNumber}</p>
+                <p className="text-sm text-gray-500 mt-1 font-mono">Ref: {report.docketNumber}</p>
               </td>
               <td className="px-4 py-6 text-right text-gray-900 font-medium text-lg">
-                {quantity.toFixed(2)}
+                <input 
+                  type="number"
+                  step="0.01"
+                  value={report.quantity || ''}
+                  onChange={(e) => onChange('quantity', Number(e.target.value))}
+                  className="invoice-input text-right text-gray-900 font-bold text-lg w-20"
+                />
               </td>
               <td className="px-4 py-6 text-right">
-                <div className="flex items-center justify-end gap-2 group">
-                  {editing ? (
-                    <div className="flex items-center gap-1 no-print">
-                      <input 
-                        type="number" 
-                        autoFocus
-                        value={rate}
-                        onChange={(e) => setRate(Number(e.target.value))}
-                        className="w-24 text-right px-2 py-1 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg font-medium"
-                      />
-                      <button onClick={onSave} disabled={saving} className="p-1 text-green-600 hover:bg-green-50 rounded">
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      </button>
-                      <button onClick={() => setEditing(false)} className="p-1 text-red-500 hover:bg-red-50 rounded">
-                         <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <span className="text-gray-900 font-medium text-lg">₹{Number(rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                      <button 
-                         onClick={() => setEditing(true)}
-                         className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition-all no-print"
-                      >
-                         <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
-                  {/* Keep static rate for printing when editing */}
-                  {editing && <span className="hidden print:inline text-gray-900 font-medium text-lg">₹{Number(rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>}
-                </div>
+                <input 
+                  type="number"
+                  step="0.01"
+                  value={report.rate || ''}
+                  onChange={(e) => onChange('rate', Number(e.target.value))}
+                  className="invoice-input text-right text-gray-900 font-bold text-lg w-24"
+                />
               </td>
               <td className="px-4 py-6 text-right text-gray-900 font-bold text-lg">
                 ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -119,33 +190,33 @@ const Invoice = ({ report, rate, setRate, onSave, editing, setEditing, saving }:
       <div className="flex justify-end pt-6 border-t-2 border-gray-100 mb-20">
         <div className="w-full max-w-xs space-y-3">
           <div className="flex justify-between text-gray-600">
-            <span>Subtotal</span>
+            <span className="font-sans">Subtotal</span>
             <span className="font-medium text-gray-900">₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between text-gray-500 text-sm">
-            <span>SGST (9%)</span>
+            <span className="font-sans">SGST (9%)</span>
             <span>₹{sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between text-gray-500 text-sm border-b border-gray-100 pb-3">
-            <span>CGST (9%)</span>
+            <span className="font-sans">CGST (9%)</span>
             <span>₹{cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between text-2xl font-black text-[#990000] pt-2">
-            <span>Total</span>
+            <span className="font-sans">Total</span>
             <span>₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="mt-auto border-t border-gray-100 pt-8 flex justify-between items-end">
+      <div className="mt-auto border-t border-gray-100 pt-8 flex justify-between items-end font-sans">
         <div className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">
            Generated by BEMS v3.0
         </div>
-        <div className="text-right">
+        <div className="text-right font-sans">
           <div className="mb-12 text-sm font-bold text-gray-400 uppercase tracking-widest">Authorized Signature</div>
           <div className="pt-2 border-t border-gray-200">
-            <p className="font-bold text-gray-800">For MATRIX INFRA RMC</p>
+            <p className="font-bold text-gray-800">For {report.companyName || 'MATRIX INFRA RMC'}</p>
           </div>
         </div>
       </div>
@@ -153,10 +224,12 @@ const Invoice = ({ report, rate, setRate, onSave, editing, setEditing, saving }:
   );
 };
 
-const DeliveryChallan = ({ report, copyType }: { report: any, copyType: string }) => {
+const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType: string, onChange: (field: string, value: any) => void }) => {
   if (!report) return null;
+  const firstLetter = (report.companyName || 'MATRIX')[0].toUpperCase();
+
   return (
-    <div className="w-full flex-1 flex flex-col relative bg-white px-8 py-4 print:pb-8" style={{ height: '135mm', maxHeight: '135mm', boxSizing: 'border-box', overflow: 'hidden', fontFamily: '"Times New Roman", Times, serif' }}>
+    <div className="w-full flex-1 flex flex-col relative bg-white px-8 py-4 print:pb-8" style={{ height: '135mm', maxHeight: '135mm', boxSizing: 'border-box', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div className="absolute top-2 right-8 text-xs font-bold text-[#990000] border border-[#990000] px-2 py-0.5 rounded-sm bg-white">
         {copyType}
       </div>
@@ -165,29 +238,45 @@ const DeliveryChallan = ({ report, copyType }: { report: any, copyType: string }
         <div className="w-24">
           <div className="w-16 h-16 rounded-full border-[3px] border-[#990000] flex items-center justify-center relative bg-white shadow-sm overflow-hidden">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
-                 <span className="text-[#990000] font-bold text-3xl z-10" style={{fontFamily: '"Times New Roman", Times, serif', transform: 'scaleX(1.2)'}}>M</span>
+                 <span className="text-[#990000] font-bold text-3xl z-10" style={{fontFamily: '"Times New Roman", Times, serif', transform: 'scaleX(1.2)'}}>{firstLetter}</span>
              </div>
           </div>
         </div>
         
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <h1 className="text-[#990000] font-[900] text-[34px] tracking-wide m-0 leading-[1.1] uppercase drop-shadow-sm" style={{textShadow: "1px 0px 0px #990000, 0px 1px 0px #990000", fontFamily: '"Times New Roman", Times, serif'}}>
-             MATRIX INFRA RMC
-          </h1>
-          <div className="text-[#990000] text-[13px] font-bold mt-0.5 mb-1 tracking-tight">Suppliers : All Types of Ready Mix Concrete,iers</div>
-          <div className="text-[#990000] text-[10px] font-semibold text-center mt-0.5 max-w-[85%] leading-tight">
-             Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.
-          </div>
+        <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <input 
+            type="text" 
+            value={report.companyName || 'MATRIX INFRA RMC'} 
+            onChange={(e) => onChange('companyName', e.target.value)}
+            className="dc-input text-center text-[#990000] font-[900] text-[26px] tracking-wide m-0 leading-[1.1] uppercase drop-shadow-sm w-full"
+            style={{ textShadow: "1px 0px 0px #990000, 0px 1px 0px #990000" }}
+          />
+          <input 
+            type="text" 
+            value={report.companyTagline || 'Suppliers : All Types of Ready Mix Concrete'} 
+            onChange={(e) => onChange('companyTagline', e.target.value)}
+            className="dc-input text-center text-[#990000] text-[12px] font-bold mt-0.5 mb-0.5 tracking-tight w-full"
+          />
+          <input 
+            type="text" 
+            value={report.companyAddress || 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.'} 
+            onChange={(e) => onChange('companyAddress', e.target.value)}
+            className="dc-input text-center text-[#990000] text-[9.5px] font-semibold mt-0.5 w-full font-sans"
+          />
         </div>
         
-        <div className="w-28 flex flex-col items-end pt-8">
-          <div className="text-[#990000] text-[11px] font-bold whitespace-nowrap">Mob.: 9325714072</div>
-          <div className="text-[#990000] text-[11px] font-bold whitespace-nowrap pr-1">9405818311</div>
+        <div className="w-36 flex flex-col items-end pt-4 font-sans justify-start">
+           <textarea 
+             value={report.companyMobile || 'Mob.: 9325714072\n9405818311'} 
+             onChange={(e) => onChange('companyMobile', e.target.value)}
+             className="dc-input text-right text-[#990000] text-[10.5px] font-bold w-full border-none outline-none resize-none bg-transparent font-sans"
+             rows={2}
+           />
         </div>
       </div>
       
-      <div className="flex justify-center mb-1 relative z-10 -mt-1">
-         <div className="bg-[#990000] text-white font-bold text-xs px-6 py-0.5 tracking-wider uppercase border border-[#990000]">
+      <div className="flex justify-center mb-1 relative z-10 -mt-1 font-sans">
+         <div className="bg-[#990000] text-white font-bold text-xs px-6 py-0.5 tracking-wider uppercase border border-[#990000] font-sans">
             DELIVERY CHALLAN
          </div>
       </div>
@@ -195,92 +284,212 @@ const DeliveryChallan = ({ report, copyType }: { report: any, copyType: string }
       <div className="border border-[#990000] flex flex-col flex-1 p-3 gap-1 text-[#990000] font-semibold text-[13px] bg-white">
          <div className="flex justify-between w-full">
             <div className="flex w-[40%] items-end">
-               <span className="w-16 pb-0.5">DC No.</span>
-               <div className="flex-1 border-[#990000] text-center font-bold text-black pb-0 leading-[1.1]">
-                  <span className="px-4 py-0.5 border-b border-[#990000]">{report.docketNumber || '-'}</span>
+               <span className="w-20 pb-0.5 text-[14px] font-bold text-[#990000]">DC No.</span>
+               <div className="flex-1 border-b border-[#990000] text-center font-bold text-black pb-0 leading-[1.1]">
+                  <input 
+                    type="number"
+                    value={report.docketNumber || ''}
+                    onChange={(e) => onChange('docketNumber', Number(e.target.value))}
+                    className="dc-input text-black text-[15px] font-bold text-center"
+                  />
                </div>
             </div>
-            <div className="flex w-[35%] items-end">
-               <span className="w-12 pb-0.5 text-right pr-2">Date :</span>
+            <div className="flex w-[40%] items-end">
+               <span className="w-16 pb-0.5 text-right pr-2 text-[14px] font-bold text-[#990000]">Date :</span>
                <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">
-                  {report.date ? format(new Date(report.date), 'dd-MMM-yyyy') : ''}
+                  <input 
+                    type="text"
+                    value={report.date ? safeFormatDate(report.date, 'dd-MMM-yyyy') : ''}
+                    onChange={(e) => onChange('date', e.target.value)}
+                    className="dc-input text-black text-[15px] font-bold text-center"
+                  />
                </div>
             </div>
          </div>
          
          <div className="flex w-full items-end mt-1">
-            <span className="w-12 pb-0.5">M/s.</span>
-            <div className="flex-1 border-b border-[#990000] text-black pb-0 leading-[1.1] pl-2">{report.customerName}</div>
+            <span className="w-12 pb-0.5 text-[14px] font-bold text-[#990000]">M/s.</span>
+            <div className="flex-1 border-b border-[#990000] text-black pb-0 leading-[1.1] pl-2">
+               <input 
+                 type="text"
+                 value={report.customerName || ''}
+                 onChange={(e) => onChange('customerName', e.target.value)}
+                 className="dc-input text-black text-[15px] font-bold"
+               />
+            </div>
          </div>
          
          <div className="flex w-full items-end mt-1">
-            <span className="w-12 pb-0.5">Site :</span>
-            <div className="flex-1 border-b border-[#990000] text-black pb-0 leading-[1.1] pl-2">{report.site}</div>
+            <span className="w-12 pb-0.5 text-[14px] font-bold text-[#990000]">Site :</span>
+            <div className="flex-1 border-b border-[#990000] text-black pb-0 leading-[1.1] pl-2">
+               <input 
+                 type="text"
+                 value={report.site || ''}
+                 onChange={(e) => onChange('site', e.target.value)}
+                 className="dc-input text-black text-[15px] font-bold"
+               />
+            </div>
          </div>
          
          <div className="flex justify-between w-full mt-1">
             <div className="flex flex-1 items-end pr-4">
-               <span className="w-40 pb-0.5">Grade of Concrete :</span>
-               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">{report.grade}</div>
+               <span className="w-40 pb-0.5 text-[14px] font-bold text-[#990000]">Grade of Concrete :</span>
+               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">
+                  <input 
+                    type="text"
+                    value={report.grade || ''}
+                    onChange={(e) => onChange('grade', e.target.value)}
+                    className="dc-input text-black text-[15px] font-bold text-center"
+                  />
+               </div>
             </div>
             <div className="flex w-[40%] items-end">
-               <span className="w-24 pb-0.5">Driver Name :</span>
-               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">{report.driverName}</div>
+               <span className="w-28 pb-0.5 text-[14px] font-bold text-[#990000]">Driver Name :</span>
+               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">
+                  <input 
+                    type="text"
+                    value={report.driverName || ''}
+                    onChange={(e) => onChange('driverName', e.target.value)}
+                    className="dc-input text-black text-[15px] font-bold text-center"
+                  />
+               </div>
             </div>
          </div>
 
          <div className="flex justify-between w-full mt-1">
             <div className="flex flex-1 items-end pr-4">
-               <span className="w-20 pb-0.5">Quantity :</span>
-               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">{Number(report.quantity || 0).toFixed(2)} M³</div>
+               <span className="w-20 pb-0.5 text-[14px] font-bold text-[#990000]">Quantity :</span>
+               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] flex items-center justify-center">
+                  <input 
+                    type="number"
+                    step="0.01"
+                    value={report.quantity || ''}
+                    onChange={(e) => onChange('quantity', Number(e.target.value))}
+                    className="dc-input text-black text-[15px] font-bold text-center w-[80%]"
+                  />
+                  <span className="text-black font-bold text-[14px] ml-1 font-sans">M³</span>
+               </div>
             </div>
             <div className="flex w-[40%] items-end">
-               <span className="w-24 pb-0.5">TM No. :</span>
-               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">{report.vehicleNumber}</div>
+               <span className="w-24 pb-0.5 text-[14px] font-bold text-[#990000]">TM No. :</span>
+               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">
+                  <input 
+                    type="text"
+                    value={report.vehicleNumber || ''}
+                    onChange={(e) => onChange('vehicleNumber', e.target.value)}
+                    className="dc-input text-black text-[15px] font-bold text-center"
+                  />
+               </div>
             </div>
          </div>
          
          <div className="flex w-full items-end pr-4 mt-1">
-               <span className="w-44 whitespace-nowrap pb-0.5">Cumulative Quantity :</span>
-               <div className="w-24 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]"></div>
-               <span className="px-2">:</span>
+            <span className="w-44 whitespace-nowrap pb-0.5 text-[14px] font-bold text-[#990000]">Cumulative Quantity :</span>
+            <div className="flex-1 border-b border-[#990000] text-black pb-0 leading-[1.1]">
+               <input 
+                 type="text"
+                 value={report.cumulativeQuantity || ''}
+                 onChange={(e) => onChange('cumulativeQuantity', e.target.value)}
+                 className="dc-input text-black text-[15px] font-bold"
+               />
+            </div>
          </div>
 
-         <div className="flex justify-between w-full mt-3 flex-1 relative">
-             <div className="flex flex-col gap-3 font-normal mt-1 w-[40%] text-[12px]">
-                 <div className="flex items-center gap-2">
-                     <div className="w-[14px] h-[14px] border border-[#990000]"></div>
-                     <span>Pump</span>
+         <div className="flex justify-between w-full mt-3 flex-1 relative font-sans">
+             <div className="flex flex-col gap-2 font-normal mt-1 w-[40%] text-[12px]">
+                 <div className="flex items-center">
+                     <label className="flex items-center gap-2 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[14px]">
+                         <input 
+                             type="checkbox" 
+                             checked={report.dcPump || false} 
+                             onChange={(e) => onChange('dcPump', e.target.checked)}
+                             className="w-[14px] h-[14px] accent-[#990000] cursor-pointer"
+                         />
+                         <span>Pump</span>
+                     </label>
+                     <div className="hidden print:flex items-center gap-2 text-[#990000] font-bold text-[14px]">
+                         <div className="w-[14px] h-[14px] border border-[#990000] flex items-center justify-center font-sans text-[10px]">
+                             {report.dcPump ? '✓' : ''}
+                         </div>
+                         <span>Pump</span>
+                     </div>
                  </div>
-                 <div className="flex items-center gap-2">
-                     <div className="w-[14px] h-[14px] border border-[#990000]"></div>
-                     <span>Manual</span>
+                 <div className="flex items-center">
+                     <label className="flex items-center gap-2 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[14px]">
+                         <input 
+                             type="checkbox" 
+                             checked={report.dcManual || false} 
+                             onChange={(e) => onChange('dcManual', e.target.checked)}
+                             className="w-[14px] h-[14px] accent-[#990000] cursor-pointer"
+                         />
+                         <span>Manual</span>
+                     </label>
+                     <div className="hidden print:flex items-center gap-2 text-[#990000] font-bold text-[14px]">
+                         <div className="w-[14px] h-[14px] border border-[#990000] flex items-center justify-center font-sans text-[10px]">
+                             {report.dcManual ? '✓' : ''}
+                         </div>
+                         <span>Manual</span>
+                     </div>
                  </div>
-                 <div className="flex items-center gap-2">
-                     <div className="w-[14px] h-[14px] border border-[#990000]"></div>
-                     <span className="whitespace-nowrap">Batch Sheet No.</span>
+                 <div className="flex items-center">
+                     <label className="flex items-center gap-2 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[14px]">
+                         <input 
+                             type="checkbox" 
+                             checked={report.dcBatchSheet || false} 
+                             onChange={(e) => onChange('dcBatchSheet', e.target.checked)}
+                             className="w-[14px] h-[14px] accent-[#990000] cursor-pointer"
+                         />
+                         <span className="whitespace-nowrap">Batch Sheet No.</span>
+                     </label>
+                     <div className="hidden print:flex items-center gap-2 text-[#990000] font-bold text-[14px]">
+                         <div className="w-[14px] h-[14px] border border-[#990000] flex items-center justify-center font-sans text-[10px]">
+                             {report.dcBatchSheet ? '✓' : ''}
+                         </div>
+                         <span className="whitespace-nowrap">Batch Sheet No.</span>
+                     </div>
                  </div>
              </div>
              
-             <div className="flex flex-col gap-2 w-[55%] items-end">
+             <div className="flex flex-col gap-2 w-[55%] items-end font-sans">
                  <div className="flex w-full items-end">
-                     <span className="w-52 whitespace-nowrap text-right pr-2">Dispatch Time From Plant :</span>
-                     <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24">{report.startTime}</div>
+                     <span className="w-52 whitespace-nowrap text-right pr-2 text-[14px] font-bold text-[#990000]">Dispatch Time From Plant :</span>
+                     <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24">
+                        <input 
+                          type="text"
+                          value={report.startTime || ''}
+                          onChange={(e) => onChange('startTime', e.target.value)}
+                          className="dc-input text-black text-[15px] font-bold text-center"
+                        />
+                     </div>
                  </div>
                  <div className="flex w-full items-end">
-                     <span className="w-52 whitespace-nowrap text-right pr-2">Arrival Time of TM at Site :</span>
-                     <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24"></div>
+                     <span className="w-52 whitespace-nowrap text-right pr-2 text-[14px] font-bold text-[#990000]">Arrival Time of TM at Site :</span>
+                     <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24">
+                        <input 
+                          type="text"
+                          value={report.dcArrivalTime || ''}
+                          onChange={(e) => onChange('dcArrivalTime', e.target.value)}
+                          className="dc-input text-black text-[15px] font-bold text-center"
+                        />
+                     </div>
                  </div>
                  <div className="flex w-full items-end">
-                     <span className="w-52 whitespace-nowrap text-right pr-2">Depart Time of TM From Site :</span>
-                     <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24"></div>
+                     <span className="w-52 whitespace-nowrap text-right pr-2 text-[14px] font-bold text-[#990000]">Depart Time of TM From Site :</span>
+                     <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24">
+                        <input 
+                          type="text"
+                          value={report.dcDepartTime || ''}
+                          onChange={(e) => onChange('dcDepartTime', e.target.value)}
+                          className="dc-input text-black text-[15px] font-bold text-center"
+                        />
+                     </div>
                  </div>
              </div>
          </div>
          
-         <div className="flex justify-between w-full mt-auto pt-8 pb-1">
-            <div className="text-[12px] font-medium tracking-tight">Custome Sign with Seal</div>
-            <div className="text-[12px] font-bold tracking-tight pr-4">For MATRIX INFRA RMC</div>
+         <div className="flex justify-between w-full mt-auto pt-8 pb-1 font-sans">
+            <div className="text-[12px] font-medium tracking-tight text-[#990000]">Custome Sign with Seal</div>
+            <div className="text-[12px] font-bold tracking-tight pr-4 text-[#990000]">For {report.companyName || 'MATRIX INFRA RMC'}</div>
          </div>
       </div>
     </div>
@@ -293,8 +502,9 @@ export default function PrintReportPage() {
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [rate, setRate] = useState(0);
-  const [editingRate, setEditingRate] = useState(false);
-  const [savingRate, setSavingRate] = useState(false);
+
+  const [dcSaveStatus, setDcSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [invoiceSaveStatus, setInvoiceSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
     async function fetchReport() {
@@ -318,43 +528,85 @@ export default function PrintReportPage() {
     }
   }, [id]);
 
-  useEffect(() => {
-    if (report && !loading && !editingRate) {
-      const timer = setTimeout(() => {
-        if (typeof window !== 'undefined') {
-            // window.print(); // Commented out so user can edit rate first if they want
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [report, loading, editingRate]);
+  const handleFieldChange = (field: string, value: any) => {
+    setReport((prev: any) => {
+      if (!prev) return prev;
+      const updated = { ...prev, [field]: value };
+      if (field === 'rate') {
+        setRate(Number(value) || 0);
+      }
+      return updated;
+    });
+  };
 
-  const handleSaveRate = async () => {
-    setSavingRate(true);
+  const handleSaveDC = async () => {
+    setDcSaveStatus('saving');
     try {
-      const res = await fetch(`/api/reports/${id}/rate`, {
-        method: 'PATCH',
+      const res = await fetch(`/api/reports/${id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rate }),
+        body: JSON.stringify(report),
       });
       if (res.ok) {
-        setReport({ ...report, rate });
-        setEditingRate(false);
+        setDcSaveStatus('saved');
+        setTimeout(() => setDcSaveStatus('idle'), 3000);
+      } else {
+        setDcSaveStatus('error');
+        setTimeout(() => setDcSaveStatus('idle'), 3000);
       }
     } catch (err) {
       console.error(err);
+      setDcSaveStatus('error');
+      setTimeout(() => setDcSaveStatus('idle'), 3000);
     }
-    setSavingRate(false);
   };
 
+  const handleSaveInvoice = async () => {
+    setInvoiceSaveStatus('saving');
+    try {
+      const res = await fetch(`/api/reports/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(report),
+      });
+      if (res.ok) {
+        setInvoiceSaveStatus('saved');
+        setTimeout(() => setInvoiceSaveStatus('idle'), 3000);
+      } else {
+        setInvoiceSaveStatus('error');
+        setTimeout(() => setInvoiceSaveStatus('idle'), 3000);
+      }
+    } catch (err) {
+      console.error(err);
+      setInvoiceSaveStatus('error');
+      setTimeout(() => setInvoiceSaveStatus('idle'), 3000);
+    }
+  };
 
-  if (loading) return <div className="p-8 text-center">Loading Report...</div>;
-  if (!report) return <div className="p-8 text-center text-red-500 font-bold">Report not found</div>;
+  const handlePrintReport = () => {
+    document.body.classList.add('print-report');
+    window.print();
+    document.body.classList.remove('print-report');
+  };
+
+  const handlePrintDC = () => {
+    document.body.classList.add('print-dc');
+    window.print();
+    document.body.classList.remove('print-dc');
+  };
+
+  const handlePrintInvoice = () => {
+    document.body.classList.add('print-invoice');
+    window.print();
+    document.body.classList.remove('print-invoice');
+  };
+
+  if (loading) return <div className="p-8 text-center font-sans">Loading Report...</div>;
+  if (!report) return <div className="p-8 text-center text-red-500 font-bold font-sans">Report not found</div>;
 
   const batches = report.batches || [];
   const targets = report.targets || {};
 
-  // Raw sum of all batch rows (used as fallback for old reports without adjustedActuals)
   const calculateTotal = (key: string) => {
     return batches.reduce((sum: number, batch: any) => sum + (Number(batch[key]) || 0), 0);
   };
@@ -377,16 +629,12 @@ export default function PrintReportPage() {
 
   const pt = (val: any) => val !== undefined ? Math.round(Number(val)) : 0;
   
-  // "Total Set Weight in Kgs." = target × numBatches (from setWeights in DB)
-  // Falls back to target × batches.length for old reports
   const sw = report.setWeights || {};
   const totalTargets = Object.keys(targets).reduce((acc: any, key) => {
     acc[key] = sw[key] !== undefined ? Number(sw[key]) : (Number(targets[key]) || 0) * batches.length;
     return acc;
   }, {});
 
-  // "Total Actual in Kgs." = real sum + DIFF offset (from adjustedActuals in DB)
-  // Falls back to raw batch sum for old reports
   const aa = report.adjustedActuals || {};
   const totals: any = Object.keys(rawTotals).reduce((acc: any, key) => {
     acc[key] = aa[key] !== undefined ? Number(aa[key]) : rawTotals[key];
@@ -394,31 +642,29 @@ export default function PrintReportPage() {
   }, {});
 
   return (
-    <div className="print-wrapper min-h-screen bg-white flex flex-col items-center pb-20 relative">
+    <div className="print-wrapper min-h-screen bg-slate-100 flex flex-col items-center pb-20 relative">
       <button 
         onClick={() => router.back()} 
-        className="no-print fixed top-4 left-4 z-50 bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-gray-700 font-sans"
+        className="no-print fixed top-4 left-4 z-50 bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-gray-700 font-sans cursor-pointer transition-colors"
       >
         &larr; Back
       </button>
       <style dangerouslySetInnerHTML={{ __html: `
-        /* --- ADJUST SPACING HERE --- */
         :root {
-            --table-cell-padding: 1px;      /* Space inside each cell (1px as requested) */
-            --table-margin-top: 0px;        /* Space above the main table */
-            --line-height-tight: 1;         /* Space between lines of text */
-            --vertical-align: bottom;       /* Align text to bottom/top of cell */
-            --info-margin-bottom: 0px;      /* Space below headers */
+            --table-cell-padding: 1px;
+            --table-margin-top: 0px;
+            --line-height-tight: 1;
+            --vertical-align: bottom;
+            --info-margin-bottom: 0px;
         }
 
         .print-page-body {
             font-family: "Times New Roman", Times, serif;
             font-size: 14px;
-            color: #333; /* Reduced black color */
+            color: #333;
             margin: 0;
             padding: 20px;
             line-height: 1.2;
-            background: #f3f4f6;
         }
 
         .report-container {
@@ -450,14 +696,6 @@ export default function PrintReportPage() {
             margin-bottom: 20px;
         }
 
-        .logo-box {
-            width: 40px;
-            height: 40px;
-            background: #666;
-            margin-right: 15px;
-            clip-path: polygon(0 0, 100% 0, 70% 100%, 0% 100%);
-        }
-
         .system-info {
             font-weight: bold;
             font-size: 16px;
@@ -468,7 +706,6 @@ export default function PrintReportPage() {
             font-weight: bold;
             font-size: 16px;
             margin: 20px 0;
-            text-decoration: none;
         }
 
         .info-section {
@@ -478,7 +715,6 @@ export default function PrintReportPage() {
             font-size: 13.3px;
         }
 
-        /* Table Styling */
         .batch-table {
             width: 100%;
             border-collapse: collapse;
@@ -520,10 +756,6 @@ export default function PrintReportPage() {
             border-bottom: 1px solid #333;
         }
 
-        .footer-row {
-            font-weight: normal;
-        }
-
         .delivery-challan-container {
             width: 850px;
             margin: 20px auto;
@@ -546,6 +778,51 @@ export default function PrintReportPage() {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
+        /* Input styling */
+        .invoice-input {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.15) !important;
+            color: black !important;
+            font-family: inherit !important;
+            font-size: inherit !important;
+            font-weight: inherit !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .invoice-input:hover, .invoice-input:focus {
+            border-bottom-color: #990000 !important;
+            background: rgba(153, 0, 0, 0.05) !important;
+            outline: none !important;
+        }
+        .dc-input {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px dashed rgba(153, 0, 0, 0.2) !important;
+            color: black !important;
+            font-family: inherit !important;
+            font-size: 15px !important;
+            font-weight: bold !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+        }
+        .dc-input:hover, .dc-input:focus {
+            border-bottom-color: #990000 !important;
+            background: rgba(153, 0, 0, 0.05) !important;
+            outline: none !important;
+        }
+
+        /* Suppress scrollbars globally on inputs and textareas */
+        input::-webkit-scrollbar, textarea::-webkit-scrollbar {
+            display: none !important;
+        }
+        input, textarea {
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+            overflow: hidden !important;
+        }
+
         @media print {
             .no-print {
                 display: none !important;
@@ -562,6 +839,21 @@ export default function PrintReportPage() {
                 background: #fff !important;
                 padding: 0 !important;
             }
+            
+            /* Selective body class prints */
+            body.print-report .delivery-challan-container,
+            body.print-report .invoice-container {
+                display: none !important;
+            }
+            body.print-dc .report-container,
+            body.print-dc .invoice-container {
+                display: none !important;
+            }
+            body.print-invoice .report-container,
+            body.print-invoice .delivery-challan-container {
+                display: none !important;
+            }
+
             .report-container { 
                 border: none !important; 
                 width: 100% !important; 
@@ -594,10 +886,31 @@ export default function PrintReportPage() {
                 size: A4 portrait;
                 margin: 10mm;
             }
+            
+            .invoice-input, .dc-input {
+                border-bottom: none !important;
+                background: transparent !important;
+                outline: none !important;
+                padding: 0 !important;
+            }
+            .no-print-checkbox-container {
+                display: none !important;
+            }
         }
       `}} />
 
       <div className="print-page-body w-full flex flex-col items-center">
+        {/* ── Section: Batch Report ── */}
+        <div className="w-[850px] flex justify-between items-center mt-6 mb-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg no-print font-sans">
+          <span className="text-sm font-bold text-slate-700">Batch Report (Read-only)</span>
+          <button 
+            onClick={handlePrintReport}
+            className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+          >
+            Print Report
+          </button>
+        </div>
+
         <div className="report-container">
             <div className="report-header" style={{ marginBottom: '5px' }}>
                 <h1 style={{ fontSize: '20px' }}>MATRIX INFRA</h1>
@@ -622,7 +935,7 @@ export default function PrintReportPage() {
                 <div style={{ width: '55%' }}>
                     <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '10px'}}>
                         <tbody>
-                            <tr><td style={{fontWeight: 'bold', width: '110px', paddingBottom: '2px', paddingLeft: '3px'}}>Batch Date</td><td style={{width: '15px', paddingBottom: '2px', textAlign: 'center', fontWeight: 'bold'}}>:</td><td style={{paddingBottom: '2px'}}>&nbsp; {report.date ? format(new Date(report.date), 'dd-MMM-yyyy') : ''}</td></tr>
+                            <tr><td style={{fontWeight: 'bold', width: '110px', paddingBottom: '2px', paddingLeft: '3px'}}>Batch Date</td><td style={{width: '15px', paddingBottom: '2px', textAlign: 'center', fontWeight: 'bold'}}>:</td><td style={{paddingBottom: '2px'}}>&nbsp; {report.date ? safeFormatDate(report.date, 'dd-MMM-yyyy') : ''}</td></tr>
                             <tr><td style={{fontWeight: 'bold', paddingBottom: '2px', paddingLeft: '0px'}}>Batch Start Time</td><td style={{paddingBottom: '2px', textAlign: 'center', fontWeight: 'bold'}}>:</td><td style={{paddingBottom: '2px'}}>&nbsp; {report.startTime || ''}</td></tr>
                             <tr><td style={{fontWeight: 'bold', paddingBottom: '2px', paddingLeft: '0px'}}>Batch End Time</td><td style={{paddingBottom: '2px', textAlign: 'center', fontWeight: 'bold'}}>:</td><td style={{paddingBottom: '2px'}}>&nbsp; {report.stopTime || ''}</td></tr>
                         </tbody>
@@ -789,26 +1102,61 @@ export default function PrintReportPage() {
             </table>
         </div>
         
+        {/* ── Section: Delivery Challan ── */}
+        <div className="w-[850px] flex justify-between items-center mt-10 mb-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg no-print font-sans">
+          <span className="text-sm font-bold text-slate-700">Delivery Challan (Editable)</span>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleSaveDC}
+              disabled={dcSaveStatus === 'saving'}
+              className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {dcSaveStatus === 'saving' ? 'Saving...' : dcSaveStatus === 'saved' ? 'Saved ✓' : dcSaveStatus === 'error' ? 'Error ✗' : 'Save Challan'}
+            </button>
+            <button 
+              onClick={handlePrintDC}
+              className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+            >
+              Print Challan
+            </button>
+          </div>
+        </div>
+
         <div className="delivery-challan-container">
-            <DeliveryChallan report={report} copyType="Original Copy" />
+            <DeliveryChallan report={report} copyType="Original Copy" onChange={handleFieldChange} />
             
-            <div className="flex items-center justify-center w-full px-4 mb-2 opacity-50 relative">
+            <div className="flex items-center justify-center w-full px-4 mb-2 opacity-50 relative no-print">
                 <div className="border-t border-dashed border-gray-500 w-full"></div>
                 <div className="absolute text-gray-500 text-[10px] bg-white px-2 font-mono" style={{top: '-8px'}}>✄ CUT HERE</div>
             </div>
             
-            <DeliveryChallan report={report} copyType="Customer Copy" />
+            <DeliveryChallan report={report} copyType="Customer Copy" onChange={handleFieldChange} />
+        </div>
+
+        {/* ── Section: Invoice ── */}
+        <div className="w-[850px] flex justify-between items-center mt-10 mb-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg no-print font-sans">
+          <span className="text-sm font-bold text-slate-700">Tax Invoice (Editable)</span>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleSaveInvoice}
+              disabled={invoiceSaveStatus === 'saving'}
+              className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {invoiceSaveStatus === 'saving' ? 'Saving...' : invoiceSaveStatus === 'saved' ? 'Saved ✓' : invoiceSaveStatus === 'error' ? 'Error ✗' : 'Save Invoice'}
+            </button>
+            <button 
+              onClick={handlePrintInvoice}
+              className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+            >
+              Print Invoice
+            </button>
+          </div>
         </div>
 
         <div className="invoice-container">
             <Invoice 
               report={report} 
-              rate={rate} 
-              setRate={setRate} 
-              onSave={handleSaveRate} 
-              editing={editingRate} 
-              setEditing={setEditingRate} 
-              saving={savingRate} 
+              onChange={handleFieldChange} 
             />
         </div>
       </div>

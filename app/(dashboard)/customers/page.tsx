@@ -7,11 +7,13 @@ import { authHeaders } from '@/lib/auth';
 export default function CustomersPage() {
   const nameRef = useRef<HTMLInputElement>(null);
   const siteRef = useRef<HTMLInputElement>(null);
+  const gstRef = useRef<HTMLInputElement>(null);
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   
   const [name, setName] = useState('');
   const [site, setSite] = useState('');
+  const [gstNumber, setGstNumber] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Pagination state
@@ -40,18 +42,20 @@ export default function CustomersPage() {
     
     const currentName = name;
     const currentSite = site;
+    const currentGstNumber = gstNumber;
     const currentEditingId = editingId;
 
     // Optimistic UI update: instant feedback
     if (currentEditingId) {
-      setCustomers(prev => prev.map(c => c._id === currentEditingId ? { ...c, name: currentName, site: currentSite } : c));
+      setCustomers(prev => prev.map(c => c._id === currentEditingId ? { ...c, name: currentName, site: currentSite, gstNumber: currentGstNumber } : c));
     } else {
       const tempId = Math.random().toString(36).substr(2, 9);
-      setCustomers(prev => [{ _id: tempId, name: currentName, site: currentSite }, ...prev]);
+      setCustomers(prev => [{ _id: tempId, name: currentName, site: currentSite, gstNumber: currentGstNumber }, ...prev]);
     }
 
     setName('');
     setSite('');
+    setGstNumber('');
     setEditingId(null);
     nameRef.current?.focus();
 
@@ -62,7 +66,7 @@ export default function CustomersPage() {
       await fetch(url, {
         method,
         headers: authHeaders(),
-        body: JSON.stringify({ name: currentName, site: currentSite }),
+        body: JSON.stringify({ name: currentName, site: currentSite, gstNumber: currentGstNumber }),
       });
       // Silent sync without spinner
       fetchCustomers(false);
@@ -73,6 +77,7 @@ export default function CustomersPage() {
   const handleEdit = (c: any) => {
     setName(c.name);
     setSite(c.site);
+    setGstNumber(c.gstNumber || '');
     setEditingId(c._id);
   };
 
@@ -160,11 +165,28 @@ export default function CustomersPage() {
                   onChange={e => setSite(e.target.value)}
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
-                      handleSubmit(e);
+                      e.preventDefault();
+                      gstRef.current?.focus();
                     }
                   }}
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                   placeholder="Enter site name"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">GST Number</label>
+                <input
+                  type="text"
+                  value={gstNumber}
+                  ref={gstRef}
+                  onChange={e => setGstNumber(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      handleSubmit(e);
+                    }
+                  }}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                  placeholder="Enter GST number (optional)"
                 />
               </div>
               <div className="pt-2 flex gap-2">
@@ -177,7 +199,7 @@ export default function CustomersPage() {
                 {editingId && (
                   <button
                     type="button"
-                    onClick={() => { setEditingId(null); setName(''); setSite(''); }}
+                    onClick={() => { setEditingId(null); setName(''); setSite(''); setGstNumber(''); }}
                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
                   >
                     Cancel
@@ -202,6 +224,7 @@ export default function CustomersPage() {
                       <th className="px-6 py-4 font-medium">S.No</th>
                       <th className="px-6 py-4 font-medium">Customer Name</th>
                       <th className="px-6 py-4 font-medium">Site</th>
+                      <th className="px-6 py-4 font-medium">GST Number</th>
                       <th className="px-6 py-4 font-medium text-right">Actions</th>
                     </tr>
                   </thead>
@@ -211,6 +234,7 @@ export default function CustomersPage() {
                         <td className="px-6 py-4 text-gray-500">{(currentPage - 1) * itemsPerPage + idx + 1}</td>
                         <td className="px-6 py-4 font-medium text-gray-900">{c.name}</td>
                         <td className="px-6 py-4 text-gray-600">{c.site}</td>
+                        <td className="px-6 py-4 text-gray-600">{c.gstNumber || '-'}</td>
                         <td className="px-6 py-4 text-right">
                           <button onClick={() => handleEdit(c)} className="text-blue-600 hover:underline mr-4 p-1">
                             <Edit2 className="w-4 h-4" />

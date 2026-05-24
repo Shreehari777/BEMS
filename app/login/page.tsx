@@ -42,8 +42,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] font-sans p-4">
       <div className="w-full max-w-md bg-white rounded-xl shadow-sm border border-slate-200 p-8">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-2xl mb-4">S</div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">SURJAN RMC</h1>
+          <div className="w-12 h-12 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-2xl mb-4">B</div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">BEMS</h1>
           <p className="text-sm text-slate-500 mt-1">Sign in to your account</p>
         </div>
 

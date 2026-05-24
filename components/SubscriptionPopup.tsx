@@ -86,7 +86,7 @@ export default function SubscriptionPopup({ open, onClose, subscription, preload
         key: orderData.razorpayKeyId,
         amount: orderData.amount,
         currency: 'INR',
-        name: 'SURJAN RMC',
+        name: 'BEMS',
         description: `${plan.name} Subscription`,
         order_id: orderData.orderId,
         handler: async (response: any) => {
@@ -163,7 +163,7 @@ export default function SubscriptionPopup({ open, onClose, subscription, preload
               <p className="text-sm text-slate-500">
                 {isExpired
                   ? 'Renew your plan to continue using the software.'
-                  : 'Choose a plan to unlock all features of SURJAN RMC.'}
+                  : 'Choose a plan to unlock all features of BEMS.'}
               </p>
             </div>
           </div>

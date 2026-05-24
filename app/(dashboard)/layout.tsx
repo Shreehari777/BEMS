@@ -205,10 +205,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             setIsMobileMenuOpen(false);
           }}
         >
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-extrabold text-lg shadow-sm shadow-blue-600/10">S</div>
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-extrabold text-lg shadow-sm shadow-blue-600/10">B</div>
           <div className="flex items-center">
-            <h1 className="text-base font-bold tracking-tight text-slate-900">SURJAN</h1>
-            <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-100/50 font-bold px-1.5 py-0.5 rounded ml-2 uppercase tracking-widest">RMC</span>
+            <h1 className="text-base font-bold tracking-tight text-slate-900">BEMS</h1>
           </div>
         </div>
         <button 
@@ -243,17 +242,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             }}
           >
             <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-xl shadow-md shadow-blue-600/10">S</div>
+              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-xl shadow-md shadow-blue-600/10">B</div>
               <div className="flex flex-col">
-                <span className="text-base font-bold tracking-tight text-slate-900 leading-tight">SURJAN</span>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-100/50 font-bold px-1.5 py-0.2 rounded uppercase tracking-widest">RMC</span>
-                  {isAdmin ? (
+                <span className="text-base font-bold tracking-tight text-slate-900 leading-tight">BEMS</span>
+                {isAdmin && (
+                  <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-[9px] bg-amber-50 text-amber-600 border border-amber-100/50 font-bold px-1.5 py-0.2 rounded uppercase tracking-wider">Admin</span>
-                  ) : (
-                    <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-100/50 font-bold px-1.5 py-0.2 rounded uppercase tracking-wider">Operator</span>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
             {/* Close button inside drawer for mobile */}
