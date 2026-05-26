@@ -87,13 +87,13 @@ export async function GET(req: Request) {
     }
 
     const total = await BatchReport.countDocuments(query);
-    let mongoQuery = BatchReport.find(query).sort({ date: -1, docketNumber: -1 });
+    let mongoQuery = BatchReport.find(query).sort({ date: -1, docketNumber: -1 }).select('-batches -targets -setWeights -adjustedActuals');
 
     if (page > 0 && limit > 0) {
       mongoQuery = mongoQuery.skip((page - 1) * limit).limit(limit);
     }
 
-    const reports = await mongoQuery;
+    const reports = await mongoQuery.lean();
     return NextResponse.json(page > 0 ? { data: reports, total } : reports);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -109,9 +109,26 @@ export async function POST(req: Request) {
 
     // ── Auto-create customer if new ──
     const Customer = (await import('@/lib/models/Customer')).default;
-    const existingCustomer = await Customer.findOne({ name: { $regex: new RegExp(`^${data.customerName}$`, 'i') }, createdBy: userId });
-    if (!existingCustomer && data.customerName) {
-      await Customer.create({ name: data.customerName, site: data.site || '', createdBy: userId });
+    let customer = await Customer.findOne({ name: { $regex: new RegExp(`^${data.customerName}$`, 'i') }, createdBy: userId });
+    if (!customer && data.customerName) {
+      customer = await Customer.create({ name: data.customerName, site: data.site || '', createdBy: userId });
+    }
+
+    let generatedOrderNumber = data.orderNumber;
+    if (customer) {
+      if (!generatedOrderNumber) {
+        customer.lastOrderNumber = (customer.lastOrderNumber || 0) + 1;
+        generatedOrderNumber = String(customer.lastOrderNumber);
+      } else {
+        // If the frontend provided a sequential number, keep the customer counter in sync
+        const parsed = parseInt(generatedOrderNumber, 10);
+        if (!isNaN(parsed) && parsed > (customer.lastOrderNumber || 0)) {
+           customer.lastOrderNumber = parsed;
+        }
+      }
+      await customer.save();
+    } else if (!generatedOrderNumber) {
+      generatedOrderNumber = '1';
     }
 
     // ── Auto-create vehicle if new ──
@@ -194,8 +211,9 @@ export async function POST(req: Request) {
       rawTotals[mat] = batches.reduce((sum, b) => sum + (Number(b[mat]) || 0), 0);
     });
 
-    // ── Separate RNG stream for DIFF offsets (doesn't interfere with batch rows) ──
-    const diffRng = mulberry32(seed ^ 0xbeef1234);
+    // ── Separate RNG stream for DIFF offsets — truly random each report creation ──
+    const diffSeed = hashSeed(`${Date.now()}-${Math.random()}-${seed}`);
+    const diffRng = mulberry32(diffSeed);
 
     // ═════════════════════════════════════════════════════════════════════════
     //  STEP 3a: Total Set Weight = target × numBatches (simple multiplication)
@@ -210,38 +228,39 @@ export async function POST(req: Request) {
     });
 
     // ═════════════════════════════════════════════════════════════════════════
-    //  STEP 3b: Adjusted Actuals = real sum of batches + random DIFF offset
-    //  DIFF is the MAXIMUM allowed offset (not exact).
-    //  DIFF = +10 → Actual += random(1 to 10)  → Actual is MORE than real sum
-    //  DIFF = -5  → Actual -= random(1 to 5)   → Actual is LESS than real sum
-    //  DIFF = 0   → Actual = exact real sum (no modification)
+    //  STEP 3b: Adjusted Actuals = Total Set Weight + random offset within DIFF
+    //  DIFF is the MAXIMUM allowed offset from the Set Weight.
+    //  DIFF = -5  → Actual = SetWeight + random(-5 to 0)  (slightly less)
+    //  DIFF = +10 → Actual = SetWeight + random(0 to 10)  (slightly more)
+    //  DIFF = 0   → Actual = SetWeight exactly (no difference)
     // ═════════════════════════════════════════════════════════════════════════
     const adjustedActuals: Record<string, number> = {};
     MATERIALS.forEach(mat => {
       const isAdmix = mat === 'adm1' || mat === 'adm2';
-      const realSum = isAdmix
-        ? Number((rawTotals[mat] || 0).toFixed(2))
-        : Math.round(rawTotals[mat] || 0);
+      const setWeight = setWeights[mat] || 0;
       const diff = getDiff(mat);
 
-      // No DIFF → Actual = exact sum of batch rows
-      if (diff === 0) {
-        adjustedActuals[mat] = realSum;
+      // No DIFF or zero target → Actual = exactly Total Set Weight (no offset)
+      if (diff === 0 || setWeight === 0) {
+        adjustedActuals[mat] = setWeight;
         return;
       }
 
-      // Random offset: between 1 and abs(DIFF), keeping the sign of DIFF
+      // Random offset: between 1 and abs(DIFF), guaranteed non-zero
       const absDiff = Math.abs(diff);
       const sign = diff > 0 ? 1 : -1;
 
       if (isAdmix) {
         const offset = Number((0.01 + diffRng() * (absDiff - 0.01)).toFixed(2));
-        adjustedActuals[mat] = Number((realSum + sign * offset).toFixed(2));
+        adjustedActuals[mat] = Number((setWeight + sign * offset).toFixed(2));
       } else {
         const offset = Math.floor(diffRng() * absDiff) + 1;
-        adjustedActuals[mat] = Math.round(realSum + sign * offset);
+        adjustedActuals[mat] = Math.round(setWeight + sign * offset);
       }
     });
+    // ── Load saved challan/invoice template defaults ──
+    const templateDoc = await Setting.findOne({ key: 'challanInvoiceTemplate' });
+    const template = templateDoc?.value || {};
 
     // ── Build final report data ──
     const enrichedData = {
@@ -256,8 +275,15 @@ export async function POST(req: Request) {
       productionQuantity: q,
       batchSize: mc,
       mixerCapacity: mc,
-      orderNumber: data.orderNumber || String(Math.floor(100 + rowRng() * 900)),
+      orderNumber: generatedOrderNumber,
       batcherName: data.batcherName || 'Stetter',
+      // Apply saved template defaults (user can override per-report later)
+      companyName: data.companyName || template.companyName || 'MATRIX INFRA RMC',
+      companyTagline: data.companyTagline || template.companyTagline || 'Suppliers : All Types of Ready Mix Concrete',
+      companyAddress: data.companyAddress || template.companyAddress || 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.',
+      companyMobile: data.companyMobile || template.companyMobile || 'Mob.: 9325714072 | 9405818311',
+      // Auto-populate GST from customer record
+      gstNumber: data.gstNumber || (customer?.gstNumber) || '',
     };
 
     const report = await BatchReport.create(enrichedData);

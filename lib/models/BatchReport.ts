@@ -31,6 +31,7 @@ const BatchReportSchema = new mongoose.Schema(
     companyTagline: { type: String, default: 'Suppliers : All Types of Ready Mix Concrete' },
     companyAddress: { type: String, default: 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.' },
     companyMobile: { type: String, default: 'Mob.: 9325714072 | 9405818311' },
+    gstNumber: { type: String, default: '' },
     batches: [{
       stone10mm: Number,
       stone20mm: Number,
@@ -101,8 +102,8 @@ const BatchReportSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Delete cached model to ensure schema changes (like adjustedActuals) are picked up
-if (mongoose.models.BatchReport) {
-  delete mongoose.models.BatchReport;
-}
-export default mongoose.model('BatchReport', BatchReportSchema);
+// ─── Indexes for fast queries ───
+BatchReportSchema.index({ createdBy: 1, date: -1, docketNumber: -1 });
+BatchReportSchema.index({ createdBy: 1, customerName: 1 });
+
+export default mongoose.models.BatchReport || mongoose.model('BatchReport', BatchReportSchema);

@@ -27,16 +27,11 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
   const cgst = amount * 0.09;
   const grandTotal = amount + sgst + cgst;
 
-  const firstLetter = (report.companyName || 'MATRIX')[0].toUpperCase();
-
   return (
     <div className="w-full bg-white p-12 print:p-0 print:shadow-none print:border-none print:w-full" style={{ minHeight: '297mm', fontFamily: '"Times New Roman", Times, serif' }}>
       {/* Invoice Header */}
       <div className="flex justify-between items-start border-b-2 border-gray-100 pb-8 mb-8">
-        <div className="flex gap-4 items-center">
-          <div className="w-20 h-20 rounded-full border-4 border-[#990000] flex items-center justify-center bg-white shadow-sm overflow-hidden flex-shrink-0">
-            <span className="text-[#990000] font-bold text-4xl" style={{ transform: 'scaleX(1.2)' }}>{firstLetter}</span>
-          </div>
+        <div>
           <div className="flex-1 min-w-[300px]">
             <input 
               type="text" 
@@ -110,6 +105,16 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
             onChange={(e) => onChange('site', e.target.value)}
             className="invoice-input text-gray-600 mt-1 w-full"
           />
+          <div className="flex items-center mt-1 gap-1">
+            <span className="text-xs text-gray-500 font-sans font-medium whitespace-nowrap">GST:</span>
+            <input 
+              type="text"
+              value={report.gstNumber || ''}
+              onChange={(e) => onChange('gstNumber', e.target.value)}
+              className="invoice-input text-gray-600 text-sm w-full"
+              placeholder="Enter GST Number"
+            />
+          </div>
         </div>
         <div className="text-right">
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 font-sans">Project Details</h3>
@@ -226,7 +231,6 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
 
 const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType: string, onChange: (field: string, value: any) => void }) => {
   if (!report) return null;
-  const firstLetter = (report.companyName || 'MATRIX')[0].toUpperCase();
 
   return (
     <div className="w-full flex-1 flex flex-col relative bg-white px-8 py-4 print:pb-8" style={{ height: '135mm', maxHeight: '135mm', boxSizing: 'border-box', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
@@ -235,14 +239,6 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
       </div>
       
       <div className="flex w-full items-start mb-1 relative">
-        <div className="w-24">
-          <div className="w-16 h-16 rounded-full border-[3px] border-[#990000] flex items-center justify-center relative bg-white shadow-sm overflow-hidden">
-             <div className="w-8 h-8 rounded-full flex items-center justify-center">
-                 <span className="text-[#990000] font-bold text-3xl z-10" style={{fontFamily: '"Times New Roman", Times, serif', transform: 'scaleX(1.2)'}}>{firstLetter}</span>
-             </div>
-          </div>
-        </div>
-        
         <div className="flex-1 flex flex-col items-center justify-center px-4">
           <input 
             type="text" 
@@ -383,17 +379,6 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
             </div>
          </div>
          
-         <div className="flex w-full items-end pr-4 mt-1">
-            <span className="w-44 whitespace-nowrap pb-0.5 text-[14px] font-bold text-[#990000]">Cumulative Quantity :</span>
-            <div className="flex-1 border-b border-[#990000] text-black pb-0 leading-[1.1]">
-               <input 
-                 type="text"
-                 value={report.cumulativeQuantity || ''}
-                 onChange={(e) => onChange('cumulativeQuantity', e.target.value)}
-                 className="dc-input text-black text-[15px] font-bold"
-               />
-            </div>
-         </div>
 
          <div className="flex justify-between w-full mt-3 flex-1 relative font-sans">
              <div className="flex flex-col gap-2 font-normal mt-1 w-[40%] text-[12px]">
@@ -452,7 +437,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
              
              <div className="flex flex-col gap-2 w-[55%] items-end font-sans">
                  <div className="flex w-full items-end">
-                     <span className="w-52 whitespace-nowrap text-right pr-2 text-[14px] font-bold text-[#990000]">Dispatch Time From Plant :</span>
+                     <span className="w-52 whitespace-nowrap text-right pr-2 text-[14px] font-bold text-[#990000]">Batch Start Time :</span>
                      <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24">
                         <input 
                           type="text"
@@ -463,23 +448,12 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                      </div>
                  </div>
                  <div className="flex w-full items-end">
-                     <span className="w-52 whitespace-nowrap text-right pr-2 text-[14px] font-bold text-[#990000]">Arrival Time of TM at Site :</span>
+                     <span className="w-52 whitespace-nowrap text-right pr-2 text-[14px] font-bold text-[#990000]">Batch End Time :</span>
                      <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24">
                         <input 
                           type="text"
-                          value={report.dcArrivalTime || ''}
-                          onChange={(e) => onChange('dcArrivalTime', e.target.value)}
-                          className="dc-input text-black text-[15px] font-bold text-center"
-                        />
-                     </div>
-                 </div>
-                 <div className="flex w-full items-end">
-                     <span className="w-52 whitespace-nowrap text-right pr-2 text-[14px] font-bold text-[#990000]">Depart Time of TM From Site :</span>
-                     <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24">
-                        <input 
-                          type="text"
-                          value={report.dcDepartTime || ''}
-                          onChange={(e) => onChange('dcDepartTime', e.target.value)}
+                          value={report.stopTime || ''}
+                          onChange={(e) => onChange('stopTime', e.target.value)}
                           className="dc-input text-black text-[15px] font-bold text-center"
                         />
                      </div>
@@ -505,17 +479,41 @@ export default function PrintReportPage() {
 
   const [dcSaveStatus, setDcSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [invoiceSaveStatus, setInvoiceSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isPrintingAll, setIsPrintingAll] = useState(false);
 
   useEffect(() => {
     async function fetchReport() {
       try {
-        const response = await fetch('/api/reports');
-        const data = await response.json();
-        const foundReport = data.find((r: any) => (r._id === id || r.id === id));
-        if (foundReport) {
-          setReport(foundReport);
-          setRate(foundReport.rate || 0);
+        const [reportRes, settingsRes] = await Promise.all([
+          fetch(`/api/reports/${id}`),
+          fetch('/api/settings'),
+        ]);
+        
+        if (!reportRes.ok) {
+          console.error('Report not found');
+          setLoading(false);
+          return;
         }
+        
+        const foundReport = await reportRes.json();
+        const settings = await settingsRes.json();
+        const template = settings.challanInvoiceTemplate || {};
+
+        // Apply saved template defaults for template fields that still have the hardcoded default
+        const TEMPLATE_FIELDS = ['companyName', 'companyTagline', 'companyAddress', 'companyMobile'];
+        const SCHEMA_DEFAULTS: Record<string, string> = {
+          companyName: 'MATRIX INFRA RMC',
+          companyTagline: 'Suppliers : All Types of Ready Mix Concrete',
+          companyAddress: 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.',
+          companyMobile: 'Mob.: 9325714072 | 9405818311',
+        };
+        TEMPLATE_FIELDS.forEach(field => {
+          if (template[field] && (!foundReport[field] || foundReport[field] === SCHEMA_DEFAULTS[field])) {
+            foundReport[field] = template[field];
+          }
+        });
+        setReport(foundReport);
+        setRate(foundReport.rate || 0);
       } catch (error) {
         console.error('Error fetching report:', error);
       } finally {
@@ -527,6 +525,28 @@ export default function PrintReportPage() {
       fetchReport();
     }
   }, [id]);
+
+  // Save template fields to Settings (global defaults for all future reports)
+  const saveTemplateToSettings = async () => {
+    if (!report) return;
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: 'challanInvoiceTemplate',
+          value: {
+            companyName: report.companyName,
+            companyTagline: report.companyTagline,
+            companyAddress: report.companyAddress,
+            companyMobile: report.companyMobile,
+          },
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to save template defaults:', err);
+    }
+  };
 
   const handleFieldChange = (field: string, value: any) => {
     setReport((prev: any) => {
@@ -548,6 +568,8 @@ export default function PrintReportPage() {
         body: JSON.stringify(report),
       });
       if (res.ok) {
+        // Also save template defaults globally
+        await saveTemplateToSettings();
         setDcSaveStatus('saved');
         setTimeout(() => setDcSaveStatus('idle'), 3000);
       } else {
@@ -570,6 +592,8 @@ export default function PrintReportPage() {
         body: JSON.stringify(report),
       });
       if (res.ok) {
+        // Also save template defaults globally
+        await saveTemplateToSettings();
         setInvoiceSaveStatus('saved');
         setTimeout(() => setInvoiceSaveStatus('idle'), 3000);
       } else {
@@ -599,6 +623,29 @@ export default function PrintReportPage() {
     document.body.classList.add('print-invoice');
     window.print();
     document.body.classList.remove('print-invoice');
+  };
+
+  const handlePrintAll = () => {
+    setIsPrintingAll(true);
+    // Print Report first
+    document.body.classList.add('print-report');
+    window.print();
+    document.body.classList.remove('print-report');
+
+    // Print Challan after a short delay
+    setTimeout(() => {
+      document.body.classList.add('print-dc');
+      window.print();
+      document.body.classList.remove('print-dc');
+
+      // Print Invoice after another short delay
+      setTimeout(() => {
+        document.body.classList.add('print-invoice');
+        window.print();
+        document.body.classList.remove('print-invoice');
+        setIsPrintingAll(false);
+      }, 500);
+    }, 500);
   };
 
   if (loading) return <div className="p-8 text-center font-sans">Loading Report...</div>;
@@ -648,6 +695,13 @@ export default function PrintReportPage() {
         className="no-print fixed top-4 left-4 z-50 bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-gray-700 font-sans cursor-pointer transition-colors"
       >
         &larr; Back
+      </button>
+      <button 
+        onClick={handlePrintAll}
+        disabled={isPrintingAll}
+        className="no-print fixed top-4 left-28 z-50 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 font-sans cursor-pointer transition-colors font-semibold text-sm disabled:opacity-50"
+      >
+        {isPrintingAll ? 'Printing...' : 'Print All'}
       </button>
       <style dangerouslySetInnerHTML={{ __html: `
         :root {

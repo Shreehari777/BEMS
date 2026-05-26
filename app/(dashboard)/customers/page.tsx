@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { Loader2, Plus, Trash2, Edit2, AlertCircle } from 'lucide-react';
 import { authHeaders } from '@/lib/auth';
+import { TabContext } from '@/lib/TabContext';
 
 export default function CustomersPage() {
   const nameRef = useRef<HTMLInputElement>(null);

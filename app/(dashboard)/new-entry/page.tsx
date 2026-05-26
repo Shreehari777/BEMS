@@ -45,6 +45,7 @@ export default function NewEntryPage() {
   };
 
   const [docketNumber, setDocketNumber] = useState('');
+  const [orderNumber, setOrderNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [site, setSite] = useState('');
   const [vehicleNumber, setVehicleNumber] = useState('');
@@ -112,6 +113,19 @@ export default function NewEntryPage() {
     return () => window.removeEventListener('bemsDataUpdated', handleUpdate);
   }, []);
 
+  useEffect(() => {
+    if (!customerName) {
+      setOrderNumber('');
+      return;
+    }
+    const existing = customers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
+    if (existing) {
+      setOrderNumber(String((existing.lastOrderNumber || 0) + 1));
+    } else {
+      setOrderNumber('1');
+    }
+  }, [customerName, customers]);
+
   const handleCustomerSelect = (customer: any) => {
     setSite(customer.site);
     setTimeout(() => {
@@ -148,6 +162,7 @@ export default function NewEntryPage() {
         headers: authHeaders(),
         body: JSON.stringify({
           docketNumber: Number(docketNumber),
+          orderNumber,
           customerName,
           site,
           vehicleNumber,
@@ -164,6 +179,7 @@ export default function NewEntryPage() {
         const createdId = createdReport._id;
 
         // Clear form
+        setOrderNumber('');
         setCustomerName('');
         setSite('');
         setVehicleNumber('');
@@ -231,6 +247,18 @@ export default function NewEntryPage() {
                   }
                 }}
                 placeholder="Select or type customer"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
+              />
+            </div>
+
+            <div className="relative" id="field-order-number">
+              <label htmlFor="input-order-number" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Order No.</label>
+              <input
+                id="input-order-number"
+                type="text"
+                value={orderNumber}
+                onChange={e => setOrderNumber(e.target.value)}
+                placeholder="Leave blank for auto"
                 className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
               />
             </div>

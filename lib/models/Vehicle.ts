@@ -9,5 +9,6 @@ const VehicleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-if (mongoose.models.Vehicle) delete mongoose.models.Vehicle;
-export default mongoose.model('Vehicle', VehicleSchema);
+VehicleSchema.index({ createdBy: 1, number: 1 });
+
+export default mongoose.models.Vehicle || mongoose.model('Vehicle', VehicleSchema);

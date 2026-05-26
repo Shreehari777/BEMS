@@ -8,7 +8,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     
     await dbConnect();
     
-    const report = await BatchReport.findById(id);
+    const report = await BatchReport.findById(id).lean();
     if (!report) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(report);
   } catch (error: any) {

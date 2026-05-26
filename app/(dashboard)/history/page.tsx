@@ -111,6 +111,7 @@ export default function HistoryPage() {
       
       const dataForExcel = allReports.map((r: any) => ({
         'Docket Number': r.docketNumber,
+        'Order Number': r.orderNumber,
         'Customer Name': r.customerName,
         'Site': r.site,
         'Vehicle Number': r.vehicleNumber,
@@ -202,6 +203,7 @@ export default function HistoryPage() {
               <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="px-4 py-3 font-medium">Docket</th>
+                  <th className="px-4 py-3 font-medium">Order No</th>
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium">Customer</th>
                   <th className="px-4 py-3 font-medium">Site</th>
@@ -217,6 +219,7 @@ export default function HistoryPage() {
                 {paginatedReports.map((r) => (
                   <tr key={r._id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3 font-medium text-gray-900">#{r.docketNumber}</td>
+                    <td className="px-4 py-3 text-gray-800">#{r.orderNumber}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{format(new Date(r.date), 'dd/MM/yyyy')}</td>
                     <td className="px-4 py-3 text-gray-800">{r.customerName}</td>
                     <td className="px-4 py-3 text-gray-600">{r.site}</td>

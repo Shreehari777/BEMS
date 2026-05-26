@@ -115,7 +115,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setSubLoading(false);
       setSubStatus('active');
     }
-  }, [currentUser, activeTab]);
+  }, [currentUser]);
 
   // Check if the user's account is still active (force-logout paused users)
   useEffect(() => {
@@ -140,9 +140,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     };
 
-    // Check immediately on mount and on every tab switch
+    // Check immediately on mount
     checkAccountActive();
-  }, [currentUser, router, activeTab]);
+  }, [currentUser, router]);
 
   // Listen for subscription updates (after payment/trial)
   useEffect(() => {
@@ -336,11 +336,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 }}
               />
             )}
-            {menuItems.map((item) => (
-              <div key={item.name} className={activeTab === item.name ? 'block' : 'hidden'}>
-                <item.component />
-              </div>
-            ))}
+            {menuItems.map((item) => {
+              if (activeTab !== item.name) return null;
+              return (
+                <div key={item.name}>
+                  <item.component />
+                </div>
+              );
+            })}
           </div>
         </TabContext.Provider>
       </main>

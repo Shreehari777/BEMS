@@ -9,7 +9,7 @@ export async function GET(req: Request) {
     await dbConnect();
     const userId = req.headers.get('x-user-id') || '';
     const query = userId ? { createdBy: userId } : {};
-    const customers = await Customer.find(query).sort({ createdAt: -1 });
+    const customers = await Customer.find(query).sort({ createdAt: -1 }).lean();
     return NextResponse.json(customers);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
