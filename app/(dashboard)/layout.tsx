@@ -16,6 +16,7 @@ import {
   Shield,
   User,
   CreditCard,
+  Loader2,
 } from 'lucide-react';
 
 import DashboardPage from './dashboard/page';
@@ -160,7 +161,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login');
   };
 
-  if (!authChecked || !currentUser || subLoading) return null;
+  if (!authChecked || !currentUser) return null;
 
   const isAdmin = currentUser.role === 'admin';
   const isSubscribed = subStatus === 'active' || subStatus === 'trial';
@@ -326,24 +327,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <TabContext.Provider value={activeTab}>
           <div className="p-4 md:p-8 space-y-8 w-full max-w-7xl mx-auto overflow-y-auto relative">
-            {isBlocked && activeTab !== 'Pricing' && (
-              <div 
-                className="absolute inset-0 z-50 cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowSubPopup(true);
-                }}
-              />
+            {subLoading ? (
+              <div className="flex flex-col items-center justify-center min-h-[300px] gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <p className="text-sm text-slate-500 font-medium">Checking subscription status...</p>
+              </div>
+            ) : (
+              <>
+                {isBlocked && activeTab !== 'Pricing' && (
+                  <div 
+                    className="absolute inset-0 z-50 cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowSubPopup(true);
+                    }}
+                  />
+                )}
+                {menuItems.map((item) => {
+                  const isCurrent = activeTab === item.name;
+                  return (
+                    <div key={item.name} className={isCurrent ? 'block' : 'hidden'}>
+                      <item.component />
+                    </div>
+                  );
+                })}
+              </>
             )}
-            {menuItems.map((item) => {
-              if (activeTab !== item.name) return null;
-              return (
-                <div key={item.name}>
-                  <item.component />
-                </div>
-              );
-            })}
           </div>
         </TabContext.Provider>
       </main>
