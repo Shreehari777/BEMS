@@ -123,6 +123,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!currentUser || currentUser.role === 'admin') return;
 
     const checkAccountActive = async () => {
+      // Don't make API calls if the tab is minimized or in the background (saves Vercel CPU runtime)
+      if (document.visibilityState !== 'visible') return;
+
       try {
         const res = await fetch(`/api/auth?userId=${currentUser.id}&t=` + Date.now());
         if (res.ok) {
@@ -143,6 +146,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // Check immediately on mount
     checkAccountActive();
+
+    // Check instantly whenever they switch back or refocus the tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkAccountActive();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Check periodically every 3 minutes (only if visible) to minimize serverless CPU runtime
+    const interval = setInterval(checkAccountActive, 180000);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [currentUser, router]);
 
   // Listen for subscription updates (after payment/trial)
