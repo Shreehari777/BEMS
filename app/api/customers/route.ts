@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Customer from '@/lib/models/Customer';
+import BatchReport from '@/lib/models/BatchReport';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,29 @@ export async function GET(req: Request) {
     const userId = req.headers.get('x-user-id') || '';
     const query = userId ? { createdBy: userId } : {};
     const customers = await Customer.find(query).sort({ createdAt: -1 }).lean();
-    return NextResponse.json(customers);
+
+    // Dynamically calculate lastOrderNumber based on actual reports in the database
+    const updatedCustomers = await Promise.all(customers.map(async (c) => {
+      const reports = await BatchReport.find({ 
+        customerName: { $regex: new RegExp(`^${c.name}$`, 'i') }, 
+        createdBy: c.createdBy 
+      }).select('orderNumber').lean();
+      
+      let maxOrder = 0;
+      reports.forEach(r => {
+        const num = parseInt(r.orderNumber, 10);
+        if (!isNaN(num) && num > maxOrder) {
+          maxOrder = num;
+        }
+      });
+      
+      return {
+        ...c,
+        lastOrderNumber: maxOrder
+      };
+    }));
+
+    return NextResponse.json(updatedCustomers);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

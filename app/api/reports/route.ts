@@ -116,15 +116,26 @@ export async function POST(req: Request) {
 
     let generatedOrderNumber = data.orderNumber;
     if (customer) {
-      if (!generatedOrderNumber) {
-        customer.lastOrderNumber = (customer.lastOrderNumber || 0) + 1;
-        generatedOrderNumber = String(customer.lastOrderNumber);
-      } else {
-        // If the frontend provided a sequential number, keep the customer counter in sync
-        const parsed = parseInt(generatedOrderNumber, 10);
-        if (!isNaN(parsed) && parsed > (customer.lastOrderNumber || 0)) {
-           customer.lastOrderNumber = parsed;
+      // Find the highest orderNumber currently in the database for this customer
+      const reports = await BatchReport.find({ 
+        customerName: { $regex: new RegExp(`^${customer.name}$`, 'i') }, 
+        createdBy: userId 
+      }).select('orderNumber').lean();
+      
+      let maxOrder = 0;
+      reports.forEach(r => {
+        const num = parseInt(r.orderNumber, 10);
+        if (!isNaN(num) && num > maxOrder) {
+          maxOrder = num;
         }
+      });
+
+      if (!generatedOrderNumber) {
+        generatedOrderNumber = String(maxOrder + 1);
+        customer.lastOrderNumber = maxOrder + 1;
+      } else {
+        const parsed = parseInt(generatedOrderNumber, 10);
+        customer.lastOrderNumber = !isNaN(parsed) ? Math.max(parsed, maxOrder) : maxOrder;
       }
       await customer.save();
     } else if (!generatedOrderNumber) {
@@ -282,8 +293,11 @@ export async function POST(req: Request) {
       companyTagline: data.companyTagline || template.companyTagline || 'Suppliers : All Types of Ready Mix Concrete',
       companyAddress: data.companyAddress || template.companyAddress || 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.',
       companyMobile: data.companyMobile || template.companyMobile || 'Mob.: 9325714072 | 9405818311',
-      // Auto-populate GST from customer record
+      // Auto-populate customer fields from customer record
       gstNumber: data.gstNumber || (customer?.gstNumber) || '',
+      customerAddress: data.customerAddress || (customer?.address) || '',
+      customerState: data.customerState || (customer?.state) || 'MAHARASHTRA',
+      customerStateCode: data.customerStateCode || (customer?.stateCode) || '27',
     };
 
     const report = await BatchReport.create(enrichedData);

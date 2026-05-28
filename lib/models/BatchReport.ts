@@ -31,7 +31,29 @@ const BatchReportSchema = new mongoose.Schema(
     companyTagline: { type: String, default: 'Suppliers : All Types of Ready Mix Concrete' },
     companyAddress: { type: String, default: 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.' },
     companyMobile: { type: String, default: 'Mob.: 9325714072 | 9405818311' },
+    companyEmail: { type: String, default: '' },
+    companyGstin: { type: String, default: '' },
+    companyState: { type: String, default: 'Maharashtra' },
+    companyStateCode: { type: String, default: '27' },
+    companyCertification: { type: String, default: '' },
+    // Customer/Receiver invoice fields
     gstNumber: { type: String, default: '' },
+    customerAddress: { type: String, default: '' },
+    customerState: { type: String, default: 'MAHARASHTRA' },
+    customerStateCode: { type: String, default: '27' },
+    // Invoice item fields
+    itemDescription: { type: String, default: '' },
+    hsnCode: { type: String, default: '' },
+    vendorNo: { type: String, default: '' },
+    poNo: { type: String, default: '' },
+    // Bank details
+    bankName: { type: String, default: '' },
+    bankAccountNumber: { type: String, default: '' },
+    bankIfscCode: { type: String, default: '' },
+    // Tax rates
+    cgstRate: { type: Number, default: 9 },
+    sgstRate: { type: Number, default: 9 },
+    igstRate: { type: Number, default: 0 },
     batches: [{
       stone10mm: Number,
       stone20mm: Number,

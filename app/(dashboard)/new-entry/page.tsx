@@ -251,18 +251,6 @@ export default function NewEntryPage() {
               />
             </div>
 
-            <div className="relative" id="field-order-number">
-              <label htmlFor="input-order-number" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Order No.</label>
-              <input
-                id="input-order-number"
-                type="text"
-                value={orderNumber}
-                onChange={e => setOrderNumber(e.target.value)}
-                placeholder="Leave blank for auto"
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
-              />
-            </div>
-
             <div id="field-vehicle-number">
               <label htmlFor="vehicle-number-autocomplete" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Vehicle Number</label>
               <Autocomplete

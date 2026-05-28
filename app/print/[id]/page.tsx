@@ -18,212 +18,354 @@ function safeFormatDate(dateVal: any, formatStr: string): string {
   return String(dateVal);
 }
 
+// ── Number to words helper ──
+function numberToWords(num: number): string {
+  if (num === 0) return 'Zero';
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const convert = (n: number): string => {
+    if (n < 20) return ones[n];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+    if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convert(n % 100) : '');
+    if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '');
+    if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
+    return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
+  };
+
+  const rupees = Math.floor(num);
+  const paise = Math.round((num - rupees) * 100);
+  let result = convert(rupees) + ' Rupees';
+  if (paise > 0) result += ' and ' + convert(paise) + ' Paise';
+  result += ' Only';
+  return result;
+}
+
 const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, value: any) => void }) => {
   if (!report) return null;
   const quantity = Number(report.quantity || 0);
   const rate = Number(report.rate || 0);
   const amount = quantity * rate;
-  const sgst = amount * 0.09;
-  const cgst = amount * 0.09;
-  const grandTotal = amount + sgst + cgst;
+  const cgstRate = Number(report.cgstRate ?? 9);
+  const sgstRate = Number(report.sgstRate ?? 9);
+  const igstRate = Number(report.igstRate ?? 0);
+  const cgstAmt = amount * (cgstRate / 100);
+  const sgstAmt = amount * (sgstRate / 100);
+  const igstAmt = amount * (igstRate / 100);
+  const totalGst = cgstAmt + sgstAmt + igstAmt;
+  const grandTotal = amount + totalGst;
+
+  const cellStyle = "border border-gray-400 px-2 py-1 text-[11px]";
+  const inputStyle = "w-full bg-transparent border-none outline-none text-[11px] font-medium";
+  const labelStyle = "font-bold text-[11px] bg-gray-100";
 
   return (
-    <div className="w-full bg-white p-12 print:p-0 print:shadow-none print:border-none print:w-full" style={{ minHeight: '297mm', fontFamily: '"Times New Roman", Times, serif' }}>
-      {/* Invoice Header */}
-      <div className="flex justify-between items-start border-b-2 border-gray-100 pb-8 mb-8">
-        <div>
-          <div className="flex-1 min-w-[300px]">
-            <input 
-              type="text" 
-              value={report.companyName || 'MATRIX INFRA RMC'} 
-              onChange={(e) => onChange('companyName', e.target.value)}
-              className="invoice-input text-3xl font-black text-[#990000] tracking-tight uppercase leading-none w-full"
-            />
-            <input 
-              type="text" 
-              value={report.companyTagline || 'Suppliers : All Types of Ready Mix Concrete'} 
-              onChange={(e) => onChange('companyTagline', e.target.value)}
-              className="invoice-input text-sm font-bold text-[#990000] mt-1 italic w-full"
-            />
-            <div className="text-[11px] text-gray-500 mt-2 max-w-xs leading-relaxed font-sans">
-               <textarea 
-                 value={report.companyAddress || 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.'} 
-                 onChange={(e) => onChange('companyAddress', e.target.value)}
-                 className="invoice-input text-[11px] text-gray-500 mt-1 max-w-xs leading-relaxed font-sans w-full border-none outline-none resize-none bg-transparent"
-                 rows={2}
-               />
-               <input 
-                 type="text" 
-                 value={report.companyMobile || 'Mob.: 9325714072 | 9405818311'} 
-                 onChange={(e) => onChange('companyMobile', e.target.value)}
-                 className="invoice-input text-[11px] text-gray-500 font-sans w-full"
-               />
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <h2 className="text-4xl font-extrabold text-gray-200 uppercase tracking-widest -mt-2">INVOICE</h2>
-          <div className="mt-4 space-y-1">
-            <div className="text-sm">
-              <span className="font-bold text-gray-500">Invoice No:</span>{' '}
-              <span className="font-mono text-gray-900">
-                BR-
-                <input 
-                  type="number"
-                  value={report.docketNumber || ''}
-                  onChange={(e) => onChange('docketNumber', Number(e.target.value))}
-                  className="invoice-input font-mono font-bold text-gray-900 w-20"
-                />
-              </span>
-            </div>
-            <div className="text-sm">
-              <span className="font-bold text-gray-500">Date:</span>{' '}
+    <div className="w-full bg-white p-6 print:p-4 print:shadow-none print:border-none print:w-full" style={{ fontFamily: '"Times New Roman", Times, serif', maxWidth: '210mm' }}>
+      
+      {/* Company Header */}
+      <table className="w-full border-collapse mb-0">
+        <tbody>
+          <tr>
+            <td className="text-center pb-1" style={{ width: '100%' }}>
               <input 
-                type="text"
-                value={report.date ? safeFormatDate(report.date, 'dd/MM/yyyy') : ''}
-                onChange={(e) => onChange('date', e.target.value)}
-                className="invoice-input text-gray-900 w-24 font-bold"
+                type="text" 
+                value={report.companyName || ''} 
+                onChange={(e) => onChange('companyName', e.target.value)}
+                className="w-full text-center text-3xl font-black tracking-tight uppercase bg-transparent border-none outline-none"
+                placeholder="COMPANY NAME"
               />
-            </div>
-          </div>
-        </div>
-      </div>
+              <input 
+                type="text" 
+                value={report.companyCertification || ''} 
+                onChange={(e) => onChange('companyCertification', e.target.value)}
+                className="w-full text-center text-[11px] font-bold text-blue-700 underline bg-transparent border-none outline-none cursor-text"
+                placeholder="AN:- ISO 9001:2008 & OHSA 18001:2007  CERTIFY COMPANY"
+                style={{ minHeight: '18px' }}
+              />
+              <input 
+                type="text" 
+                value={report.companyTagline || ''} 
+                onChange={(e) => onChange('companyTagline', e.target.value)}
+                className="w-full text-center text-[10px] font-bold uppercase bg-transparent border-none outline-none"
+                placeholder="Company Description / Tagline"
+              />
+              <input 
+                type="text" 
+                value={report.companyAddress || ''} 
+                onChange={(e) => onChange('companyAddress', e.target.value)}
+                className="w-full text-center text-[10px] font-bold bg-transparent border-none outline-none"
+                placeholder="Company Address"
+              />
+              <div className="flex justify-center gap-12 mt-1">
+                <span className="flex items-center gap-1 text-[10px]">
+                  <span className="underline font-medium">E-mail:</span>
+                  <input 
+                    type="text" 
+                    value={report.companyEmail || ''} 
+                    onChange={(e) => onChange('companyEmail', e.target.value)}
+                    className="bg-transparent border-none outline-none text-[10px] underline text-blue-700 w-48"
+                    placeholder="email@example.com"
+                  />
+                </span>
+                <span className="flex items-center gap-1 text-[10px]">
+                  <span className="font-medium">Tel:</span>
+                  <input 
+                    type="text" 
+                    value={report.companyMobile || ''} 
+                    onChange={(e) => onChange('companyMobile', e.target.value)}
+                    className="bg-transparent border-none outline-none text-[10px] w-32"
+                    placeholder="Phone Number"
+                  />
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      {/* Info */}
-      <div className="grid grid-cols-2 gap-12 mb-10">
-        <div>
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 font-sans">Bill To</h3>
-          <input 
-            type="text"
-            value={report.customerName || ''}
-            onChange={(e) => onChange('customerName', e.target.value)}
-            className="invoice-input text-xl font-bold text-gray-900 w-full"
-          />
-          <input 
-            type="text"
-            value={report.site || ''}
-            onChange={(e) => onChange('site', e.target.value)}
-            className="invoice-input text-gray-600 mt-1 w-full"
-          />
-          <div className="flex items-center mt-1 gap-1">
-            <span className="text-xs text-gray-500 font-sans font-medium whitespace-nowrap">GST:</span>
-            <input 
-              type="text"
-              value={report.gstNumber || ''}
-              onChange={(e) => onChange('gstNumber', e.target.value)}
-              className="invoice-input text-gray-600 text-sm w-full"
-              placeholder="Enter GST Number"
-            />
-          </div>
-        </div>
-        <div className="text-right">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 font-sans">Project Details</h3>
-          <p className="text-gray-900 font-bold">
-            <span className="text-gray-500 font-medium font-sans">Grade & Mix:</span>{' '}
-            <input 
-              type="text"
-              value={report.grade || ''}
-              onChange={(e) => onChange('grade', e.target.value)}
-              className="invoice-input text-gray-900 font-bold w-48 text-right"
-            />
-          </p>
-          <p className="text-gray-600">
-            <span className="text-gray-500 font-medium font-sans">Docket:</span>{' '}
-            <input 
-              type="number"
-              value={report.docketNumber || ''}
-              onChange={(e) => onChange('docketNumber', Number(e.target.value))}
-              className="invoice-input text-gray-600 w-20 text-right font-bold"
-            />
-          </p>
-          <p className="text-gray-600">
-            <span className="text-gray-500 font-medium font-sans">Vehicle:</span>{' '}
-            <input 
-              type="text"
-              value={report.vehicleNumber || ''}
-              onChange={(e) => onChange('vehicleNumber', e.target.value)}
-              className="invoice-input text-gray-600 w-28 text-right font-bold"
-            />
-          </p>
-        </div>
-      </div>
+      {/* GST Invoice Title & Info */}
+      <table className="w-full border-collapse border border-gray-400 mt-1">
+        <tbody>
+          <tr className="bg-gray-100">
+            <td colSpan={2} className={`${cellStyle} font-bold text-center`}>GST INVOICE</td>
+            <td colSpan={2} className={`${cellStyle} font-bold text-center`}>ORIGINAL FOR BUYER</td>
+          </tr>
+          <tr>
+            <td className={`${cellStyle} ${labelStyle} w-24`}>STATE :</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.companyState || ''} onChange={(e) => onChange('companyState', e.target.value)} className={inputStyle} placeholder="Maharashtra" />
+            </td>
+            <td className={`${cellStyle} ${labelStyle} w-28`}>INVOICE NO.</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.orderNumber || ''} onChange={(e) => onChange('orderNumber', e.target.value)} className={`${inputStyle} font-bold`} placeholder="001" />
+            </td>
+          </tr>
+          <tr>
+            <td className={`${cellStyle} ${labelStyle}`}>GSTIN :</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.companyGstin || ''} onChange={(e) => onChange('companyGstin', e.target.value)} className={inputStyle} placeholder="Enter Company GSTIN" />
+            </td>
+            <td className={`${cellStyle} ${labelStyle}`}>DATE :</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.date ? safeFormatDate(report.date, 'dd-MM-yyyy') : ''} onChange={(e) => onChange('date', e.target.value)} className={`${inputStyle} font-bold`} />
+            </td>
+          </tr>
+          <tr>
+            <td className={`${cellStyle} ${labelStyle}`}>STATE CODE :</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.companyStateCode || ''} onChange={(e) => onChange('companyStateCode', e.target.value)} className={inputStyle} placeholder="27" />
+            </td>
+            <td className={`${cellStyle} ${labelStyle}`}>VENDORE NO.</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.vendorNo || ''} onChange={(e) => onChange('vendorNo', e.target.value)} className={inputStyle} />
+            </td>
+          </tr>
+          <tr>
+            <td className={cellStyle}></td>
+            <td className={cellStyle}></td>
+            <td className={`${cellStyle} ${labelStyle}`}>PO.NO :</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.poNo || ''} onChange={(e) => onChange('poNo', e.target.value)} className={inputStyle} />
+            </td>
+          </tr>
+          <tr>
+            <td className={cellStyle}></td>
+            <td className={cellStyle}></td>
+            <td className={`${cellStyle} ${labelStyle}`}>SITE :</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.site || ''} onChange={(e) => onChange('site', e.target.value)} className={inputStyle} />
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      {/* Table */}
-      <div className="mb-10">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider font-bold font-sans">
-              <th className="px-4 py-3 text-left border-b-2 border-gray-200">Description</th>
-              <th className="px-4 py-3 text-right border-b-2 border-gray-200">Qty (m³)</th>
-              <th className="px-4 py-3 text-right border-b-2 border-gray-200">Rate (₹)</th>
-              <th className="px-4 py-3 text-right border-b-2 border-gray-200">Amount (₹)</th>
+      {/* Details Of Receiver / Billed To */}
+      <table className="w-full border-collapse border border-gray-400 mt-2">
+        <tbody>
+          <tr className="bg-gray-100">
+            <td colSpan={2} className={`${cellStyle} font-bold`}>Details Of Receiver/ Billes to :</td>
+          </tr>
+          <tr>
+            <td className={`${cellStyle} ${labelStyle} w-36`}>Name</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.customerName || ''} onChange={(e) => onChange('customerName', e.target.value)} className={`${inputStyle} font-bold`} placeholder="Customer Name" />
+            </td>
+          </tr>
+          <tr>
+            <td className={`${cellStyle} ${labelStyle}`}>Address</td>
+            <td className={cellStyle}>
+              <textarea 
+                value={report.customerAddress || ''} 
+                onChange={(e) => onChange('customerAddress', e.target.value)} 
+                className={`${inputStyle} resize-none`}
+                rows={2}
+                placeholder="Enter customer address"
+              />
+            </td>
+          </tr>
+          <tr>
+            <td className={`${cellStyle} ${labelStyle}`}>Name Of State</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.customerState || ''} onChange={(e) => onChange('customerState', e.target.value)} className={inputStyle} placeholder="MAHARASHTRA" />
+            </td>
+          </tr>
+          <tr>
+            <td className={`${cellStyle} ${labelStyle}`}>STATE CODE</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.customerStateCode || ''} onChange={(e) => onChange('customerStateCode', e.target.value)} className={inputStyle} placeholder="27" />
+            </td>
+          </tr>
+          <tr>
+            <td className={`${cellStyle} ${labelStyle}`}>GSTIN /Unique ID</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.gstNumber || ''} onChange={(e) => onChange('gstNumber', e.target.value)} className={inputStyle} placeholder="Enter GST Number" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Items Table */}
+      <table className="w-full border-collapse border border-gray-400 mt-2">
+        <thead>
+          <tr className="bg-gray-200">
+            <th className={`${cellStyle} font-bold text-center w-12`}>SR.NO</th>
+            <th className={`${cellStyle} font-bold text-center`}>Description Of Goods</th>
+            <th className={`${cellStyle} font-bold text-center w-20`}>HSN /SAC CODE</th>
+            <th className={`${cellStyle} font-bold text-center w-14`}>QTY</th>
+            <th className={`${cellStyle} font-bold text-center w-16`}>RATE</th>
+            <th className={`${cellStyle} font-bold text-center w-24`}>TOTAL VALUE</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className={`${cellStyle} text-center`}>1]</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.itemDescription || `Ready Mix Concrete - ${report.grade}`} onChange={(e) => onChange('itemDescription', e.target.value)} className={inputStyle} />
+            </td>
+            <td className={`${cellStyle} text-center`}>
+              <input type="text" value={report.hsnCode || ''} onChange={(e) => onChange('hsnCode', e.target.value)} className={`${inputStyle} text-center`} placeholder="HSN Code" />
+            </td>
+            <td className={`${cellStyle} text-center`}>
+              <input type="number" step="0.01" value={report.quantity || ''} onChange={(e) => onChange('quantity', Number(e.target.value))} className={`${inputStyle} text-center`} />
+            </td>
+            <td className={`${cellStyle} text-center`}>
+              <input type="number" step="0.01" value={report.rate || ''} onChange={(e) => onChange('rate', Number(e.target.value))} className={`${inputStyle} text-center`} />
+            </td>
+            <td className={`${cellStyle} text-right font-bold`}>
+              {amount > 0 ? amount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : ''}
+            </td>
+          </tr>
+          {[2, 3, 4, 5, 6, 7, 8].map(i => (
+            <tr key={i} style={{ height: '20px' }}>
+              <td className={cellStyle}></td>
+              <td className={cellStyle}></td>
+              <td className={cellStyle}></td>
+              <td className={cellStyle}></td>
+              <td className={cellStyle}></td>
+              <td className={cellStyle}></td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            <tr>
-              <td className="px-4 py-6 text-gray-800">
-                <p className="font-bold text-lg leading-tight">Ready Mix Concrete - {report.grade}</p>
-                <p className="text-sm text-gray-500 mt-1 font-mono">Ref: {report.docketNumber}</p>
-              </td>
-              <td className="px-4 py-6 text-right text-gray-900 font-medium text-lg">
-                <input 
-                  type="number"
-                  step="0.01"
-                  value={report.quantity || ''}
-                  onChange={(e) => onChange('quantity', Number(e.target.value))}
-                  className="invoice-input text-right text-gray-900 font-bold text-lg w-20"
-                />
-              </td>
-              <td className="px-4 py-6 text-right">
-                <input 
-                  type="number"
-                  step="0.01"
-                  value={report.rate || ''}
-                  onChange={(e) => onChange('rate', Number(e.target.value))}
-                  className="invoice-input text-right text-gray-900 font-bold text-lg w-24"
-                />
-              </td>
-              <td className="px-4 py-6 text-right text-gray-900 font-bold text-lg">
-                ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
 
-      {/* Totals */}
-      <div className="flex justify-end pt-6 border-t-2 border-gray-100 mb-20">
-        <div className="w-full max-w-xs space-y-3">
-          <div className="flex justify-between text-gray-600">
-            <span className="font-sans">Subtotal</span>
-            <span className="font-medium text-gray-900">₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-          </div>
-          <div className="flex justify-between text-gray-500 text-sm">
-            <span className="font-sans">SGST (9%)</span>
-            <span>₹{sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-          </div>
-          <div className="flex justify-between text-gray-500 text-sm border-b border-gray-100 pb-3">
-            <span className="font-sans">CGST (9%)</span>
-            <span>₹{cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-          </div>
-          <div className="flex justify-between text-2xl font-black text-[#990000] pt-2">
-            <span className="font-sans">Total</span>
-            <span>₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-          </div>
-        </div>
-      </div>
+      {/* Bottom Section: Bank Details + Tax Calculations */}
+      <table className="w-full border-collapse border border-gray-400 mt-0">
+        <tbody>
+          {/* Amount Before Tax in Words */}
+          <tr>
+            <td colSpan={3} className={`${cellStyle} text-[10px]`}>
+              <span className="font-bold">Rupees : </span>
+              {amount > 0 ? numberToWords(amount) : ''}
+            </td>
+            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>TotalAmt.Bef<br/>ore tax</td>
+            <td className={`${cellStyle} font-bold text-right text-[12px]`}>
+              {amount > 0 ? amount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : ''}
+            </td>
+          </tr>
 
-      {/* Footer */}
-      <div className="mt-auto border-t border-gray-100 pt-8 flex justify-between items-end font-sans">
-        <div className="text-[10px] text-gray-400 font-mono uppercase tracking-widest">
-           Generated by BEMS v3.0
-        </div>
-        <div className="text-right font-sans">
-          <div className="mb-12 text-sm font-bold text-gray-400 uppercase tracking-widest">Authorized Signature</div>
-          <div className="pt-2 border-t border-gray-200">
-            <p className="font-bold text-gray-800">For {report.companyName || 'MATRIX INFRA RMC'}</p>
-          </div>
-        </div>
+          {/* Bank Details Header */}
+          <tr>
+            <td colSpan={2} className={`${cellStyle} ${labelStyle}`}>Bank Details</td>
+            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>Type of tax</td>
+            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>Rate</td>
+            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>Amt.</td>
+          </tr>
+
+          {/* Bank Name + CGST */}
+          <tr>
+            <td className={`${cellStyle} ${labelStyle} w-36`}>Bank Name :</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.bankName || ''} onChange={(e) => onChange('bankName', e.target.value)} className={inputStyle} placeholder="Bank Name" />
+            </td>
+            <td className={`${cellStyle} text-center text-[10px]`}>Add :CGST</td>
+            <td className={`${cellStyle} text-center`}>
+              <input type="number" step="0.01" value={cgstRate} onChange={(e) => onChange('cgstRate', Number(e.target.value))} className={`${inputStyle} text-center`} style={{width:'30px',display:'inline'}} /><span>%</span>
+            </td>
+            <td className={`${cellStyle} text-right font-bold`}>
+              {cgstAmt > 0 ? cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 1 }) : '-'}
+            </td>
+          </tr>
+
+          {/* Bank Account + SGST */}
+          <tr>
+            <td className={`${cellStyle} ${labelStyle}`}>Bank Account Number :</td>
+            <td className={cellStyle}>
+              <input type="text" value={report.bankAccountNumber || ''} onChange={(e) => onChange('bankAccountNumber', e.target.value)} className={inputStyle} placeholder="Account Number" />
+            </td>
+            <td className={`${cellStyle} text-center text-[10px]`}>ADD : SGST</td>
+            <td className={`${cellStyle} text-center`}>
+              <input type="number" step="0.01" value={sgstRate} onChange={(e) => onChange('sgstRate', Number(e.target.value))} className={`${inputStyle} text-center`} style={{width:'30px',display:'inline'}} /><span>%</span>
+            </td>
+            <td className={`${cellStyle} text-right font-bold`}>
+              {sgstAmt > 0 ? sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 1 }) : '-'}
+            </td>
+          </tr>
+
+          {/* IGST */}
+          <tr>
+            <td className={cellStyle}></td>
+            <td className={cellStyle}></td>
+            <td className={`${cellStyle} text-center text-[10px]`}>ADD :IGST</td>
+            <td className={`${cellStyle} text-center`}>{igstRate > 0 ? `${igstRate}%` : '-'}</td>
+            <td className={`${cellStyle} text-right font-bold`}>
+              {igstAmt > 0 ? igstAmt.toLocaleString('en-IN', { minimumFractionDigits: 1 }) : '-'}
+            </td>
+          </tr>
+
+          {/* IFSC Code + Total GST */}
+          <tr>
+            <td className={`${cellStyle} ${labelStyle}`}>IFSC Code</td>
+            <td className={cellStyle}>
+              <span className="px-4">:</span>
+              <input type="text" value={report.bankIfscCode || ''} onChange={(e) => onChange('bankIfscCode', e.target.value)} className="bg-transparent border-none outline-none text-[11px] font-medium" style={{width:'70%'}} placeholder="IFSC Code" />
+            </td>
+            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>Total IGST<br/>PAYABLE</td>
+            <td className={cellStyle}></td>
+            <td className={`${cellStyle} text-right font-bold text-[12px]`}>
+              {totalGst > 0 ? totalGst.toLocaleString('en-IN', { minimumFractionDigits: 1 }) : '-'}
+            </td>
+          </tr>
+
+          {/* Grand Total in Words + Grand Total */}
+          <tr>
+            <td colSpan={3} className={`${cellStyle} text-[10px]`}>
+              <span className="font-bold">Rupees : </span>
+              {grandTotal > 0 ? numberToWords(grandTotal) : ''}
+            </td>
+            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>Total<br/>Amt.After<br/>Tax</td>
+            <td className={`${cellStyle} text-right font-black text-[14px]`}>
+              {grandTotal > 0 ? grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 0 }) : ''}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Signature Section */}
+      <div className="border border-gray-400 border-t-0 p-4 min-h-[80px] flex flex-col justify-end items-end">
+        <p className="text-[11px] font-bold text-right">For {report.companyName || 'Company Name'}</p>
+        <div className="mt-10"></div>
+        <p className="text-[11px] font-bold text-right border-t border-gray-400 pt-1 px-4">Authorised Signatory</p>
       </div>
     </div>
   );
@@ -233,238 +375,285 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
   if (!report) return null;
 
   return (
-    <div className="w-full flex-1 flex flex-col relative bg-white px-8 py-4 print:pb-8" style={{ height: '135mm', maxHeight: '135mm', boxSizing: 'border-box', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <div className="absolute top-2 right-8 text-xs font-bold text-[#990000] border border-[#990000] px-2 py-0.5 rounded-sm bg-white">
-        {copyType}
-      </div>
-      
-      <div className="flex w-full items-start mb-1 relative">
-        <div className="flex-1 flex flex-col items-center justify-center px-4">
-          <input 
-            type="text" 
-            value={report.companyName || 'MATRIX INFRA RMC'} 
-            onChange={(e) => onChange('companyName', e.target.value)}
-            className="dc-input text-center text-[#990000] font-[900] text-[26px] tracking-wide m-0 leading-[1.1] uppercase drop-shadow-sm w-full"
-            style={{ textShadow: "1px 0px 0px #990000, 0px 1px 0px #990000" }}
-          />
-          <input 
-            type="text" 
-            value={report.companyTagline || 'Suppliers : All Types of Ready Mix Concrete'} 
-            onChange={(e) => onChange('companyTagline', e.target.value)}
-            className="dc-input text-center text-[#990000] text-[12px] font-bold mt-0.5 mb-0.5 tracking-tight w-full"
-          />
-          <input 
-            type="text" 
-            value={report.companyAddress || 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.'} 
-            onChange={(e) => onChange('companyAddress', e.target.value)}
-            className="dc-input text-center text-[#990000] text-[9.5px] font-semibold mt-0.5 w-full font-sans"
-          />
+    <div className="w-full flex-1 flex flex-col bg-white p-3.5 print:pb-4" style={{ height: '135mm', maxHeight: '135mm', boxSizing: 'border-box', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div className="border-[2px] border-[#990000] flex-1 flex flex-col p-3 bg-white relative">
+        {/* Header Section */}
+        <div className="flex justify-between items-start border-b border-[#990000] pb-2 mb-2">
+          <div className="flex-1 pr-6">
+            <input 
+              type="text" 
+              value={report.companyName || 'MATRIX INFRA RMC'} 
+              onChange={(e) => onChange('companyName', e.target.value)}
+              className="dc-input text-left text-[#990000] font-[950] text-2xl tracking-wide uppercase outline-none mb-0.5 bg-transparent border-none w-full"
+              style={{ textShadow: "0.5px 0px 0px #990000" }}
+              placeholder="COMPANY NAME"
+            />
+            <input 
+              type="text" 
+              value={report.companyTagline || 'Suppliers : All Types of Ready Mix Concrete'} 
+              onChange={(e) => onChange('companyTagline', e.target.value)}
+              className="dc-input text-left text-[#990000] text-[10px] font-bold tracking-tight outline-none block mb-0.5 bg-transparent border-none w-full"
+              placeholder="Company Tagline"
+            />
+            <input 
+              type="text" 
+              value={report.companyAddress || 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.'} 
+              onChange={(e) => onChange('companyAddress', e.target.value)}
+              className="dc-input text-left text-[#990000] text-[8.5px] font-semibold font-sans outline-none block bg-transparent border-none w-full"
+              placeholder="Company Address"
+            />
+          </div>
+          
+          {/* Right Column: Copy Badge + Mobile Details (Stacked to Prevent Overlaps) */}
+          <div className="text-right w-44 flex flex-col items-end gap-1.5 select-none">
+            {/* Copy Type Tag */}
+            <div className="text-[8.5px] font-extrabold text-[#990000] border border-[#990000] px-2 py-0.5 bg-white uppercase tracking-wider rounded-sm">
+              {copyType}
+            </div>
+            
+            {/* Mobile Numbers */}
+            <textarea 
+              value={report.companyMobile || 'Mob.: 9325714072\n9405818311'} 
+              onChange={(e) => onChange('companyMobile', e.target.value)}
+              className="dc-input text-right text-[#990000] text-[9.5px] font-bold w-full border-none outline-none resize-none bg-transparent font-sans"
+              rows={2}
+              placeholder="Mobile Number"
+            />
+          </div>
         </div>
         
-        <div className="w-36 flex flex-col items-end pt-4 font-sans justify-start">
-           <textarea 
-             value={report.companyMobile || 'Mob.: 9325714072\n9405818311'} 
-             onChange={(e) => onChange('companyMobile', e.target.value)}
-             className="dc-input text-right text-[#990000] text-[10.5px] font-bold w-full border-none outline-none resize-none bg-transparent font-sans"
-             rows={2}
-           />
-        </div>
-      </div>
-      
-      <div className="flex justify-center mb-1 relative z-10 -mt-1 font-sans">
-         <div className="bg-[#990000] text-white font-bold text-xs px-6 py-0.5 tracking-wider uppercase border border-[#990000] font-sans">
+        {/* Title */}
+        <div className="flex justify-center mb-2">
+          <span className="bg-[#990000] text-white font-black text-[10.5px] px-6 py-0.5 tracking-widest uppercase border border-[#990000]">
             DELIVERY CHALLAN
-         </div>
-      </div>
-      
-      <div className="border border-[#990000] flex flex-col flex-1 p-3 gap-1 text-[#990000] font-semibold text-[13px] bg-white">
-         <div className="flex justify-between w-full">
-            <div className="flex w-[40%] items-end">
-               <span className="w-20 pb-0.5 text-[14px] font-bold text-[#990000]">DC No.</span>
-               <div className="flex-1 border-b border-[#990000] text-center font-bold text-black pb-0 leading-[1.1]">
+          </span>
+        </div>
+        
+        {/* Customer & Challan Metadata Block */}
+        <table className="w-full border-collapse border border-[#990000] text-[#990000] text-xs mb-2">
+          <tbody>
+            <tr>
+              <td className="border border-[#990000] p-2 w-[60%] align-top">
+                <div className="flex items-center mb-1.5">
+                  <span className="text-[9px] uppercase font-extrabold w-12 text-[#990000]">M/s:</span>
+                  <input 
+                    type="text"
+                    value={report.customerName || ''}
+                    onChange={(e) => onChange('customerName', e.target.value)}
+                    className="dc-input bg-transparent border-none outline-none text-black font-bold text-xs flex-1"
+                    placeholder="Customer Name"
+                  />
+                </div>
+                <div className="flex items-start">
+                  <span className="text-[9px] uppercase font-extrabold w-12 text-[#990000] pt-0.5">Site:</span>
+                  <textarea 
+                    value={report.site || ''}
+                    onChange={(e) => onChange('site', e.target.value)}
+                    className="dc-input bg-transparent border-none outline-none text-black font-bold text-xs flex-1 resize-none h-[28px] leading-tight"
+                    placeholder="Delivery Site Address"
+                    rows={2}
+                  />
+                </div>
+              </td>
+              <td className="border border-[#990000] p-2 w-[40%] align-top">
+                <div className="flex items-center mb-1.5">
+                  <span className="text-[9px] uppercase font-extrabold w-20 text-[#990000]">Challan No:</span>
                   <input 
                     type="number"
                     value={report.docketNumber || ''}
                     onChange={(e) => onChange('docketNumber', Number(e.target.value))}
-                    className="dc-input text-black text-[15px] font-bold text-center"
+                    className="dc-input bg-transparent border-none outline-none text-black font-bold text-xs flex-1"
+                    placeholder="Docket No."
                   />
-               </div>
-            </div>
-            <div className="flex w-[40%] items-end">
-               <span className="w-16 pb-0.5 text-right pr-2 text-[14px] font-bold text-[#990000]">Date :</span>
-               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">
+                </div>
+                <div className="flex items-center">
+                  <span className="text-[9px] uppercase font-extrabold w-20 text-[#990000]">Date:</span>
                   <input 
                     type="text"
                     value={report.date ? safeFormatDate(report.date, 'dd-MMM-yyyy') : ''}
                     onChange={(e) => onChange('date', e.target.value)}
-                    className="dc-input text-black text-[15px] font-bold text-center"
+                    className="dc-input bg-transparent border-none outline-none text-black font-bold text-xs flex-1"
+                    placeholder="Date"
                   />
-               </div>
-            </div>
-         </div>
-         
-         <div className="flex w-full items-end mt-1">
-            <span className="w-12 pb-0.5 text-[14px] font-bold text-[#990000]">M/s.</span>
-            <div className="flex-1 border-b border-[#990000] text-black pb-0 leading-[1.1] pl-2">
-               <input 
-                 type="text"
-                 value={report.customerName || ''}
-                 onChange={(e) => onChange('customerName', e.target.value)}
-                 className="dc-input text-black text-[15px] font-bold"
-               />
-            </div>
-         </div>
-         
-         <div className="flex w-full items-end mt-1">
-            <span className="w-12 pb-0.5 text-[14px] font-bold text-[#990000]">Site :</span>
-            <div className="flex-1 border-b border-[#990000] text-black pb-0 leading-[1.1] pl-2">
-               <input 
-                 type="text"
-                 value={report.site || ''}
-                 onChange={(e) => onChange('site', e.target.value)}
-                 className="dc-input text-black text-[15px] font-bold"
-               />
-            </div>
-         </div>
-         
-         <div className="flex justify-between w-full mt-1">
-            <div className="flex flex-1 items-end pr-4">
-               <span className="w-40 pb-0.5 text-[14px] font-bold text-[#990000]">Grade of Concrete :</span>
-               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        {/* Main Dispatch Grid Table */}
+        <table className="w-full border-collapse border border-[#990000] text-[#990000] text-xs mb-2">
+          <thead>
+            <tr className="bg-[#990000]/5 uppercase tracking-wider font-extrabold text-[9px]">
+              <th className="border border-[#990000] px-2 py-1 text-center w-[8%]">Sr. No.</th>
+              <th className="border border-[#990000] px-3 py-1 text-left w-[52%]">Description of Material & Grade</th>
+              <th className="border border-[#990000] px-3 py-1 text-center w-[20%]">TM Vehicle No.</th>
+              <th className="border border-[#990000] px-3 py-1 text-center w-[20%]">Quantity (M³)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="text-black font-semibold">
+              <td className="border border-[#990000] px-2 py-1.5 text-center text-gray-500">1</td>
+              <td className="border border-[#990000] px-3 py-1.5 text-left">
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-400 text-[10px] font-normal">Ready Mix Concrete - </span>
                   <input 
                     type="text"
                     value={report.grade || ''}
                     onChange={(e) => onChange('grade', e.target.value)}
-                    className="dc-input text-black text-[15px] font-bold text-center"
+                    className="dc-input bg-transparent border-none outline-none text-black font-bold text-xs w-28"
+                    placeholder="Grade"
                   />
-               </div>
-            </div>
-            <div className="flex w-[40%] items-end">
-               <span className="w-28 pb-0.5 text-[14px] font-bold text-[#990000]">Driver Name :</span>
-               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">
+                </div>
+              </td>
+              <td className="border border-[#990000] px-3 py-1.5 text-center">
+                <input 
+                  type="text"
+                  value={report.vehicleNumber || ''}
+                  onChange={(e) => onChange('vehicleNumber', e.target.value)}
+                  className="dc-input bg-transparent border-none outline-none text-black font-bold text-center text-xs w-full"
+                  placeholder="TM No."
+                />
+              </td>
+              <td className="border border-[#990000] px-3 py-1.5 text-center">
+                <input 
+                  type="number"
+                  step="0.01"
+                  value={report.quantity || ''}
+                  onChange={(e) => onChange('quantity', Number(e.target.value))}
+                  className="dc-input bg-transparent border-none outline-none text-black font-bold text-center text-xs w-full"
+                  placeholder="Qty"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        {/* Logistics, Pouring Method & Time Log */}
+        <table className="w-full border-collapse border border-[#990000] text-[#990000] text-xs mb-2">
+          <tbody>
+            <tr>
+              {/* Placement / Pouring Method Checkboxes */}
+              <td className="border border-[#990000] p-2 w-[40%] align-top">
+                <span className="text-[8px] uppercase font-extrabold text-[#990000] block mb-1 tracking-wider">Placement Method</span>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center">
+                    <label className="flex items-center gap-1.5 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[10px]">
+                      <input 
+                        type="checkbox" 
+                        checked={report.dcPump || false} 
+                        onChange={(e) => onChange('dcPump', e.target.checked)}
+                        className="w-3 h-3 accent-[#990000] cursor-pointer"
+                      />
+                      <span className="uppercase tracking-wider">Pump Pouring</span>
+                    </label>
+                    <div className="hidden print:flex items-center gap-1.5 text-[#990000] font-bold text-[10px]">
+                      <div className="w-3 h-3 border border-[#990000] flex items-center justify-center font-sans text-[8px] font-black">
+                        {report.dcPump ? '✓' : ''}
+                      </div>
+                      <span className="uppercase tracking-wider">Pump Pouring</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <label className="flex items-center gap-1.5 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[10px]">
+                      <input 
+                        type="checkbox" 
+                        checked={report.dcManual || false} 
+                        onChange={(e) => onChange('dcManual', e.target.checked)}
+                        className="w-3 h-3 accent-[#990000] cursor-pointer"
+                      />
+                      <span className="uppercase tracking-wider">Manual Pouring</span>
+                    </label>
+                    <div className="hidden print:flex items-center gap-1.5 text-[#990000] font-bold text-[10px]">
+                      <div className="w-3 h-3 border border-[#990000] flex items-center justify-center font-sans text-[8px] font-black">
+                        {report.dcManual ? '✓' : ''}
+                      </div>
+                      <span className="uppercase tracking-wider">Manual Pouring</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <label className="flex items-center gap-1.5 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[10px]">
+                      <input 
+                        type="checkbox" 
+                        checked={report.dcBatchSheet || false} 
+                        onChange={(e) => onChange('dcBatchSheet', e.target.checked)}
+                        className="w-3 h-3 accent-[#990000] cursor-pointer"
+                      />
+                      <span className="uppercase tracking-wider whitespace-nowrap">Batch Sheet Attached</span>
+                    </label>
+                    <div className="hidden print:flex items-center gap-1.5 text-[#990000] font-bold text-[10px]">
+                      <div className="w-3 h-3 border border-[#990000] flex items-center justify-center font-sans text-[8px] font-black">
+                        {report.dcBatchSheet ? '✓' : ''}
+                      </div>
+                      <span className="uppercase tracking-wider whitespace-nowrap">Batch Sheet Attached</span>
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              {/* Batching times */}
+              <td className="border border-[#990000] p-2 w-[35%] align-top">
+                <span className="text-[8px] uppercase font-extrabold text-[#990000] block mb-1.5 tracking-wider">Time Log</span>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center">
+                    <span className="text-[9px] uppercase font-bold w-16 text-[#990000]">Start Time:</span>
+                    <input 
+                      type="text"
+                      value={report.startTime || ''}
+                      onChange={(e) => onChange('startTime', e.target.value)}
+                      className="dc-input bg-transparent border-none outline-none text-black font-bold text-xs flex-1"
+                      placeholder="--:--"
+                    />
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-[9px] uppercase font-bold w-16 text-[#990000]">End Time:</span>
+                    <input 
+                      type="text"
+                      value={report.stopTime || ''}
+                      onChange={(e) => onChange('stopTime', e.target.value)}
+                      className="dc-input bg-transparent border-none outline-none text-black font-bold text-xs flex-1"
+                      placeholder="--:--"
+                    />
+                  </div>
+                </div>
+              </td>
+
+              {/* Driver Details */}
+              <td className="border border-[#990000] p-2 w-[25%] align-top">
+                <span className="text-[8px] uppercase font-extrabold text-[#990000] block mb-1 tracking-wider">Logistics</span>
+                <div className="flex flex-col gap-1 mt-1">
+                  <span className="text-[9px] uppercase font-bold text-[#990000]">Driver Name:</span>
                   <input 
                     type="text"
                     value={report.driverName || ''}
                     onChange={(e) => onChange('driverName', e.target.value)}
-                    className="dc-input text-black text-[15px] font-bold text-center"
+                    className="dc-input bg-transparent border-none outline-none text-black font-bold text-xs w-full mt-0.5"
+                    placeholder="Driver Name"
                   />
-               </div>
-            </div>
-         </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        {/* Signatures */}
+        <div className="flex justify-between w-full mt-auto pt-2 pb-0.5 px-1">
+          <div className="text-[9px] font-bold uppercase tracking-wider text-[#990000] flex flex-col items-center justify-end h-12 w-40 text-center">
+            <div className="border-b border-dashed border-[#990000] w-full mb-1"></div>
+            <span>Receiver's Sign & Seal</span>
+          </div>
+          
+          <div className="text-[9px] font-bold uppercase tracking-wider text-[#990000] flex flex-col items-center justify-end h-12 w-32 text-center">
+            <div className="border-b border-dashed border-[#990000] w-full mb-1"></div>
+            <span>Driver's Signature</span>
+          </div>
 
-         <div className="flex justify-between w-full mt-1">
-            <div className="flex flex-1 items-end pr-4">
-               <span className="w-20 pb-0.5 text-[14px] font-bold text-[#990000]">Quantity :</span>
-               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] flex items-center justify-center">
-                  <input 
-                    type="number"
-                    step="0.01"
-                    value={report.quantity || ''}
-                    onChange={(e) => onChange('quantity', Number(e.target.value))}
-                    className="dc-input text-black text-[15px] font-bold text-center w-[80%]"
-                  />
-                  <span className="text-black font-bold text-[14px] ml-1 font-sans">M³</span>
-               </div>
-            </div>
-            <div className="flex w-[40%] items-end">
-               <span className="w-24 pb-0.5 text-[14px] font-bold text-[#990000]">TM No. :</span>
-               <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1]">
-                  <input 
-                    type="text"
-                    value={report.vehicleNumber || ''}
-                    onChange={(e) => onChange('vehicleNumber', e.target.value)}
-                    className="dc-input text-black text-[15px] font-bold text-center"
-                  />
-               </div>
-            </div>
-         </div>
-         
-
-         <div className="flex justify-between w-full mt-3 flex-1 relative font-sans">
-             <div className="flex flex-col gap-2 font-normal mt-1 w-[40%] text-[12px]">
-                 <div className="flex items-center">
-                     <label className="flex items-center gap-2 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[14px]">
-                         <input 
-                             type="checkbox" 
-                             checked={report.dcPump || false} 
-                             onChange={(e) => onChange('dcPump', e.target.checked)}
-                             className="w-[14px] h-[14px] accent-[#990000] cursor-pointer"
-                         />
-                         <span>Pump</span>
-                     </label>
-                     <div className="hidden print:flex items-center gap-2 text-[#990000] font-bold text-[14px]">
-                         <div className="w-[14px] h-[14px] border border-[#990000] flex items-center justify-center font-sans text-[10px]">
-                             {report.dcPump ? '✓' : ''}
-                         </div>
-                         <span>Pump</span>
-                     </div>
-                 </div>
-                 <div className="flex items-center">
-                     <label className="flex items-center gap-2 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[14px]">
-                         <input 
-                             type="checkbox" 
-                             checked={report.dcManual || false} 
-                             onChange={(e) => onChange('dcManual', e.target.checked)}
-                             className="w-[14px] h-[14px] accent-[#990000] cursor-pointer"
-                         />
-                         <span>Manual</span>
-                     </label>
-                     <div className="hidden print:flex items-center gap-2 text-[#990000] font-bold text-[14px]">
-                         <div className="w-[14px] h-[14px] border border-[#990000] flex items-center justify-center font-sans text-[10px]">
-                             {report.dcManual ? '✓' : ''}
-                         </div>
-                         <span>Manual</span>
-                     </div>
-                 </div>
-                 <div className="flex items-center">
-                     <label className="flex items-center gap-2 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[14px]">
-                         <input 
-                             type="checkbox" 
-                             checked={report.dcBatchSheet || false} 
-                             onChange={(e) => onChange('dcBatchSheet', e.target.checked)}
-                             className="w-[14px] h-[14px] accent-[#990000] cursor-pointer"
-                         />
-                         <span className="whitespace-nowrap">Batch Sheet No.</span>
-                     </label>
-                     <div className="hidden print:flex items-center gap-2 text-[#990000] font-bold text-[14px]">
-                         <div className="w-[14px] h-[14px] border border-[#990000] flex items-center justify-center font-sans text-[10px]">
-                             {report.dcBatchSheet ? '✓' : ''}
-                         </div>
-                         <span className="whitespace-nowrap">Batch Sheet No.</span>
-                     </div>
-                 </div>
-             </div>
-             
-             <div className="flex flex-col gap-2 w-[55%] items-end font-sans">
-                 <div className="flex w-full items-end">
-                     <span className="w-52 whitespace-nowrap text-right pr-2 text-[14px] font-bold text-[#990000]">Batch Start Time :</span>
-                     <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24">
-                        <input 
-                          type="text"
-                          value={report.startTime || ''}
-                          onChange={(e) => onChange('startTime', e.target.value)}
-                          className="dc-input text-black text-[15px] font-bold text-center"
-                        />
-                     </div>
-                 </div>
-                 <div className="flex w-full items-end">
-                     <span className="w-52 whitespace-nowrap text-right pr-2 text-[14px] font-bold text-[#990000]">Batch End Time :</span>
-                     <div className="flex-1 border-b border-[#990000] text-center text-black pb-0 leading-[1.1] max-w-24">
-                        <input 
-                          type="text"
-                          value={report.stopTime || ''}
-                          onChange={(e) => onChange('stopTime', e.target.value)}
-                          className="dc-input text-black text-[15px] font-bold text-center"
-                        />
-                     </div>
-                 </div>
-             </div>
-         </div>
-         
-         <div className="flex justify-between w-full mt-auto pt-8 pb-1 font-sans">
-            <div className="text-[12px] font-medium tracking-tight text-[#990000]">Custome Sign with Seal</div>
-            <div className="text-[12px] font-bold tracking-tight pr-4 text-[#990000]">For {report.companyName || 'MATRIX INFRA RMC'}</div>
-         </div>
+          <div className="text-[9px] font-bold uppercase tracking-wider text-[#990000] text-center flex flex-col items-center justify-end h-12 w-48">
+            <span className="mb-6 font-extrabold text-[8px] tracking-tight">For {report.companyName || 'MATRIX INFRA RMC'}</span>
+            <div className="border-b border-dashed border-[#990000] w-full mb-1"></div>
+            <span>Authorised Signatory</span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -499,16 +688,23 @@ export default function PrintReportPage() {
         const settings = await settingsRes.json();
         const template = settings.challanInvoiceTemplate || {};
 
-        // Apply saved template defaults for template fields that still have the hardcoded default
-        const TEMPLATE_FIELDS = ['companyName', 'companyTagline', 'companyAddress', 'companyMobile'];
-        const SCHEMA_DEFAULTS: Record<string, string> = {
+        // Apply saved template defaults for template fields that still have the hardcoded default or are empty
+        const TEMPLATE_FIELDS = [
+          'companyName', 'companyTagline', 'companyAddress', 'companyMobile',
+          'companyEmail', 'companyGstin', 'companyState', 'companyStateCode', 'companyCertification',
+          'bankName', 'bankAccountNumber', 'bankIfscCode',
+          'cgstRate', 'sgstRate', 'hsnCode',
+        ];
+        const SCHEMA_DEFAULTS: Record<string, any> = {
           companyName: 'MATRIX INFRA RMC',
           companyTagline: 'Suppliers : All Types of Ready Mix Concrete',
           companyAddress: 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.',
           companyMobile: 'Mob.: 9325714072 | 9405818311',
+          companyState: 'Maharashtra',
+          companyStateCode: '27',
         };
         TEMPLATE_FIELDS.forEach(field => {
-          if (template[field] && (!foundReport[field] || foundReport[field] === SCHEMA_DEFAULTS[field])) {
+          if (template[field] !== undefined && template[field] !== '' && (!foundReport[field] || foundReport[field] === SCHEMA_DEFAULTS[field] || foundReport[field] === '')) {
             foundReport[field] = template[field];
           }
         });
@@ -540,6 +736,17 @@ export default function PrintReportPage() {
             companyTagline: report.companyTagline,
             companyAddress: report.companyAddress,
             companyMobile: report.companyMobile,
+            companyEmail: report.companyEmail,
+            companyGstin: report.companyGstin,
+            companyState: report.companyState,
+            companyStateCode: report.companyStateCode,
+            companyCertification: report.companyCertification,
+            bankName: report.bankName,
+            bankAccountNumber: report.bankAccountNumber,
+            bankIfscCode: report.bankIfscCode,
+            cgstRate: report.cgstRate,
+            sgstRate: report.sgstRate,
+            hsnCode: report.hsnCode,
           },
         }),
       });
@@ -637,14 +844,7 @@ export default function PrintReportPage() {
       document.body.classList.add('print-dc');
       window.print();
       document.body.classList.remove('print-dc');
-
-      // Print Invoice after another short delay
-      setTimeout(() => {
-        document.body.classList.add('print-invoice');
-        window.print();
-        document.body.classList.remove('print-invoice');
-        setIsPrintingAll(false);
-      }, 500);
+      setIsPrintingAll(false);
     }, 500);
   };
 
@@ -853,10 +1053,7 @@ export default function PrintReportPage() {
             background: transparent !important;
             border: none !important;
             border-bottom: 1px dashed rgba(153, 0, 0, 0.2) !important;
-            color: black !important;
             font-family: inherit !important;
-            font-size: 15px !important;
-            font-weight: bold !important;
             padding: 0 !important;
             margin: 0 !important;
             width: 100% !important;

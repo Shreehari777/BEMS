@@ -211,7 +211,6 @@ export default function HistoryPage() {
                   <th className="px-4 py-3 font-medium">Driver</th>
                   <th className="px-4 py-3 font-medium">Grade</th>
                   <th className="px-4 py-3 font-medium">Qty</th>
-                  <th className="px-4 py-3 font-medium">Time (Start-Stop)</th>
                   <th className="px-4 py-3 font-medium text-right print:hidden">Action</th>
                 </tr>
               </thead>
@@ -227,9 +226,6 @@ export default function HistoryPage() {
                     <td className="px-4 py-3 text-gray-600">{r.driverName}</td>
                     <td className="px-4 py-3 font-medium text-blue-600">{r.grade}</td>
                     <td className="px-4 py-3 font-medium text-gray-900">{r.quantity} m³</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                      {r.startTime} - {r.stopTime}
-                    </td>
                     <td className="px-4 py-3 text-right print:hidden flex justify-end gap-2 items-center">
                       <button 
                         onClick={() => router.push(`/print/${r._id}`)} 
