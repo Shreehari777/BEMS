@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { format, isValid } from 'date-fns';
 import { Loader2, Save, Edit2, X } from 'lucide-react';
@@ -62,37 +62,37 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
 
   return (
     <div className="w-full bg-white p-6 print:p-4 print:shadow-none print:border-none print:w-full" style={{ fontFamily: '"Times New Roman", Times, serif', maxWidth: '210mm' }}>
-      
+
       {/* Company Header */}
       <table className="w-full border-collapse mb-0">
         <tbody>
           <tr>
             <td className="text-center pb-1" style={{ width: '100%' }}>
-              <input 
-                type="text" 
-                value={report.companyName || ''} 
+              <input
+                type="text"
+                value={report.companyName || ''}
                 onChange={(e) => onChange('companyName', e.target.value)}
                 className="w-full text-center text-3xl font-black tracking-tight uppercase bg-transparent border-none outline-none"
                 placeholder="COMPANY NAME"
               />
-              <input 
-                type="text" 
-                value={report.companyCertification || ''} 
+              <input
+                type="text"
+                value={report.companyCertification || ''}
                 onChange={(e) => onChange('companyCertification', e.target.value)}
                 className="w-full text-center text-[11px] font-bold text-blue-700 underline bg-transparent border-none outline-none cursor-text"
                 placeholder="AN:- ISO 9001:2008 & OHSA 18001:2007  CERTIFY COMPANY"
                 style={{ minHeight: '18px' }}
               />
-              <input 
-                type="text" 
-                value={report.companyTagline || ''} 
+              <input
+                type="text"
+                value={report.companyTagline || ''}
                 onChange={(e) => onChange('companyTagline', e.target.value)}
                 className="w-full text-center text-[10px] font-bold uppercase bg-transparent border-none outline-none"
                 placeholder="Company Description / Tagline"
               />
-              <input 
-                type="text" 
-                value={report.companyAddress || ''} 
+              <input
+                type="text"
+                value={report.companyAddress || ''}
                 onChange={(e) => onChange('companyAddress', e.target.value)}
                 className="w-full text-center text-[10px] font-bold bg-transparent border-none outline-none"
                 placeholder="Company Address"
@@ -100,9 +100,9 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
               <div className="flex justify-center gap-12 mt-1">
                 <span className="flex items-center gap-1 text-[10px]">
                   <span className="underline font-medium">E-mail:</span>
-                  <input 
-                    type="text" 
-                    value={report.companyEmail || ''} 
+                  <input
+                    type="text"
+                    value={report.companyEmail || ''}
                     onChange={(e) => onChange('companyEmail', e.target.value)}
                     className="bg-transparent border-none outline-none text-[10px] underline text-blue-700 w-48"
                     placeholder="email@example.com"
@@ -110,9 +110,9 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
                 </span>
                 <span className="flex items-center gap-1 text-[10px]">
                   <span className="font-medium">Tel:</span>
-                  <input 
-                    type="text" 
-                    value={report.companyMobile || ''} 
+                  <input
+                    type="text"
+                    value={report.companyMobile || ''}
                     onChange={(e) => onChange('companyMobile', e.target.value)}
                     className="bg-transparent border-none outline-none text-[10px] w-32"
                     placeholder="Phone Number"
@@ -138,7 +138,7 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
             </td>
             <td className={`${cellStyle} ${labelStyle} w-28`}>INVOICE NO.</td>
             <td className={cellStyle}>
-              <input type="text" value={report.orderNumber || ''} onChange={(e) => onChange('orderNumber', e.target.value)} className={`${inputStyle} font-bold`} placeholder="001" />
+              <span className={`${inputStyle} font-bold inline-block`}>{report.invoiceNumber || ''}</span>
             </td>
           </tr>
           <tr>
@@ -195,9 +195,9 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
           <tr>
             <td className={`${cellStyle} ${labelStyle}`}>Address</td>
             <td className={cellStyle}>
-              <textarea 
-                value={report.customerAddress || ''} 
-                onChange={(e) => onChange('customerAddress', e.target.value)} 
+              <textarea
+                value={report.customerAddress || ''}
+                onChange={(e) => onChange('customerAddress', e.target.value)}
                 className={`${inputStyle} resize-none`}
                 rows={2}
                 placeholder="Enter customer address"
@@ -278,7 +278,7 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
               <span className="font-bold">Rupees : </span>
               {amount > 0 ? numberToWords(amount) : ''}
             </td>
-            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>TotalAmt.Bef<br/>ore tax</td>
+            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>TotalAmt.Bef<br />ore tax</td>
             <td className={`${cellStyle} font-bold text-right text-[12px]`}>
               {amount > 0 ? amount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : ''}
             </td>
@@ -300,7 +300,7 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
             </td>
             <td className={`${cellStyle} text-center text-[10px]`}>Add :CGST</td>
             <td className={`${cellStyle} text-center`}>
-              <input type="number" step="0.01" value={cgstRate} onChange={(e) => onChange('cgstRate', Number(e.target.value))} className={`${inputStyle} text-center`} style={{width:'30px',display:'inline'}} /><span>%</span>
+              <input type="number" step="0.01" value={cgstRate} onChange={(e) => onChange('cgstRate', Number(e.target.value))} className={`${inputStyle} text-center`} style={{ width: '30px', display: 'inline' }} /><span>%</span>
             </td>
             <td className={`${cellStyle} text-right font-bold`}>
               {cgstAmt > 0 ? cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 1 }) : '-'}
@@ -315,7 +315,7 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
             </td>
             <td className={`${cellStyle} text-center text-[10px]`}>ADD : SGST</td>
             <td className={`${cellStyle} text-center`}>
-              <input type="number" step="0.01" value={sgstRate} onChange={(e) => onChange('sgstRate', Number(e.target.value))} className={`${inputStyle} text-center`} style={{width:'30px',display:'inline'}} /><span>%</span>
+              <input type="number" step="0.01" value={sgstRate} onChange={(e) => onChange('sgstRate', Number(e.target.value))} className={`${inputStyle} text-center`} style={{ width: '30px', display: 'inline' }} /><span>%</span>
             </td>
             <td className={`${cellStyle} text-right font-bold`}>
               {sgstAmt > 0 ? sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 1 }) : '-'}
@@ -338,9 +338,9 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
             <td className={`${cellStyle} ${labelStyle}`}>IFSC Code</td>
             <td className={cellStyle}>
               <span className="px-4">:</span>
-              <input type="text" value={report.bankIfscCode || ''} onChange={(e) => onChange('bankIfscCode', e.target.value)} className="bg-transparent border-none outline-none text-[11px] font-medium" style={{width:'70%'}} placeholder="IFSC Code" />
+              <input type="text" value={report.bankIfscCode || ''} onChange={(e) => onChange('bankIfscCode', e.target.value)} className="bg-transparent border-none outline-none text-[11px] font-medium" style={{ width: '70%' }} placeholder="IFSC Code" />
             </td>
-            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>Total IGST<br/>PAYABLE</td>
+            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>Total IGST<br />PAYABLE</td>
             <td className={cellStyle}></td>
             <td className={`${cellStyle} text-right font-bold text-[12px]`}>
               {totalGst > 0 ? totalGst.toLocaleString('en-IN', { minimumFractionDigits: 1 }) : '-'}
@@ -353,7 +353,7 @@ const Invoice = ({ report, onChange }: { report: any, onChange: (field: string, 
               <span className="font-bold">Rupees : </span>
               {grandTotal > 0 ? numberToWords(grandTotal) : ''}
             </td>
-            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>Total<br/>Amt.After<br/>Tax</td>
+            <td className={`${cellStyle} ${labelStyle} text-center text-[10px]`}>Total<br />Amt.After<br />Tax</td>
             <td className={`${cellStyle} text-right font-black text-[14px]`}>
               {grandTotal > 0 ? grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 0 }) : ''}
             </td>
@@ -380,40 +380,40 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
         {/* Header Section */}
         <div className="flex justify-between items-start border-b border-[#990000] pb-2 mb-2">
           <div className="flex-1 pr-6">
-            <input 
-              type="text" 
-              value={report.companyName || 'MATRIX INFRA RMC'} 
+            <input
+              type="text"
+              value={report.companyName || 'MATRIX INFRA RMC'}
               onChange={(e) => onChange('companyName', e.target.value)}
               className="dc-input text-left text-[#990000] font-[950] text-2xl tracking-wide uppercase outline-none mb-0.5 bg-transparent border-none w-full"
               style={{ textShadow: "0.5px 0px 0px #990000" }}
               placeholder="COMPANY NAME"
             />
-            <input 
-              type="text" 
-              value={report.companyTagline || 'Suppliers : All Types of Ready Mix Concrete'} 
+            <input
+              type="text"
+              value={report.companyTagline || 'Suppliers : All Types of Ready Mix Concrete'}
               onChange={(e) => onChange('companyTagline', e.target.value)}
               className="dc-input text-left text-[#990000] text-[10px] font-bold tracking-tight outline-none block mb-0.5 bg-transparent border-none w-full"
               placeholder="Company Tagline"
             />
-            <input 
-              type="text" 
-              value={report.companyAddress || 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.'} 
+            <input
+              type="text"
+              value={report.companyAddress || 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.'}
               onChange={(e) => onChange('companyAddress', e.target.value)}
               className="dc-input text-left text-[#990000] text-[8.5px] font-semibold font-sans outline-none block bg-transparent border-none w-full"
               placeholder="Company Address"
             />
           </div>
-          
+
           {/* Right Column: Copy Badge + Mobile Details (Stacked to Prevent Overlaps) */}
           <div className="text-right w-44 flex flex-col items-end gap-1.5 select-none">
             {/* Copy Type Tag */}
             <div className="text-[8.5px] font-extrabold text-[#990000] border border-[#990000] px-2 py-0.5 bg-white uppercase tracking-wider rounded-sm">
               {copyType}
             </div>
-            
+
             {/* Mobile Numbers */}
-            <textarea 
-              value={report.companyMobile || 'Mob.: 9325714072\n9405818311'} 
+            <textarea
+              value={report.companyMobile || 'Mob.: 9325714072\n9405818311'}
               onChange={(e) => onChange('companyMobile', e.target.value)}
               className="dc-input text-right text-[#990000] text-[9.5px] font-bold w-full border-none outline-none resize-none bg-transparent font-sans"
               rows={2}
@@ -421,14 +421,14 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
             />
           </div>
         </div>
-        
+
         {/* Title */}
         <div className="flex justify-center mb-2">
           <span className="bg-[#990000] text-white font-black text-[10.5px] px-6 py-0.5 tracking-widest uppercase border border-[#990000]">
             DELIVERY CHALLAN
           </span>
         </div>
-        
+
         {/* Customer & Challan Metadata Block */}
         <table className="w-full border-collapse border border-[#990000] text-[#990000] text-xs mb-2">
           <tbody>
@@ -436,7 +436,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
               <td className="border border-[#990000] p-2 w-[60%] align-top">
                 <div className="flex items-center mb-1.5">
                   <span className="text-[9px] uppercase font-extrabold w-12 text-[#990000]">M/s:</span>
-                  <input 
+                  <input
                     type="text"
                     value={report.customerName || ''}
                     onChange={(e) => onChange('customerName', e.target.value)}
@@ -446,7 +446,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                 </div>
                 <div className="flex items-start">
                   <span className="text-[9px] uppercase font-extrabold w-12 text-[#990000] pt-0.5">Site:</span>
-                  <textarea 
+                  <textarea
                     value={report.site || ''}
                     onChange={(e) => onChange('site', e.target.value)}
                     className="dc-input bg-transparent border-none outline-none text-black font-bold text-xs flex-1 resize-none h-[28px] leading-tight"
@@ -458,7 +458,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
               <td className="border border-[#990000] p-2 w-[40%] align-top">
                 <div className="flex items-center mb-1.5">
                   <span className="text-[9px] uppercase font-extrabold w-20 text-[#990000]">Challan No:</span>
-                  <input 
+                  <input
                     type="number"
                     value={report.docketNumber || ''}
                     onChange={(e) => onChange('docketNumber', Number(e.target.value))}
@@ -468,7 +468,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                 </div>
                 <div className="flex items-center">
                   <span className="text-[9px] uppercase font-extrabold w-20 text-[#990000]">Date:</span>
-                  <input 
+                  <input
                     type="text"
                     value={report.date ? safeFormatDate(report.date, 'dd-MMM-yyyy') : ''}
                     onChange={(e) => onChange('date', e.target.value)}
@@ -480,7 +480,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
             </tr>
           </tbody>
         </table>
-        
+
         {/* Main Dispatch Grid Table */}
         <table className="w-full border-collapse border border-[#990000] text-[#990000] text-xs mb-2">
           <thead>
@@ -497,7 +497,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
               <td className="border border-[#990000] px-3 py-1.5 text-left">
                 <div className="flex items-center gap-1">
                   <span className="text-gray-400 text-[10px] font-normal">Ready Mix Concrete - </span>
-                  <input 
+                  <input
                     type="text"
                     value={report.grade || ''}
                     onChange={(e) => onChange('grade', e.target.value)}
@@ -507,7 +507,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                 </div>
               </td>
               <td className="border border-[#990000] px-3 py-1.5 text-center">
-                <input 
+                <input
                   type="text"
                   value={report.vehicleNumber || ''}
                   onChange={(e) => onChange('vehicleNumber', e.target.value)}
@@ -516,7 +516,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                 />
               </td>
               <td className="border border-[#990000] px-3 py-1.5 text-center">
-                <input 
+                <input
                   type="number"
                   step="0.01"
                   value={report.quantity || ''}
@@ -528,7 +528,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
             </tr>
           </tbody>
         </table>
-        
+
         {/* Logistics, Pouring Method & Time Log */}
         <table className="w-full border-collapse border border-[#990000] text-[#990000] text-xs mb-2">
           <tbody>
@@ -539,9 +539,9 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center">
                     <label className="flex items-center gap-1.5 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[10px]">
-                      <input 
-                        type="checkbox" 
-                        checked={report.dcPump || false} 
+                      <input
+                        type="checkbox"
+                        checked={report.dcPump || false}
                         onChange={(e) => onChange('dcPump', e.target.checked)}
                         className="w-3 h-3 accent-[#990000] cursor-pointer"
                       />
@@ -556,9 +556,9 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                   </div>
                   <div className="flex items-center">
                     <label className="flex items-center gap-1.5 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[10px]">
-                      <input 
-                        type="checkbox" 
-                        checked={report.dcManual || false} 
+                      <input
+                        type="checkbox"
+                        checked={report.dcManual || false}
                         onChange={(e) => onChange('dcManual', e.target.checked)}
                         className="w-3 h-3 accent-[#990000] cursor-pointer"
                       />
@@ -573,9 +573,9 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                   </div>
                   <div className="flex items-center">
                     <label className="flex items-center gap-1.5 cursor-pointer no-print-checkbox-container text-[#990000] font-bold text-[10px]">
-                      <input 
-                        type="checkbox" 
-                        checked={report.dcBatchSheet || false} 
+                      <input
+                        type="checkbox"
+                        checked={report.dcBatchSheet || false}
                         onChange={(e) => onChange('dcBatchSheet', e.target.checked)}
                         className="w-3 h-3 accent-[#990000] cursor-pointer"
                       />
@@ -597,7 +597,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center">
                     <span className="text-[9px] uppercase font-bold w-16 text-[#990000]">Start Time:</span>
-                    <input 
+                    <input
                       type="text"
                       value={report.startTime || ''}
                       onChange={(e) => onChange('startTime', e.target.value)}
@@ -607,7 +607,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                   </div>
                   <div className="flex items-center">
                     <span className="text-[9px] uppercase font-bold w-16 text-[#990000]">End Time:</span>
-                    <input 
+                    <input
                       type="text"
                       value={report.stopTime || ''}
                       onChange={(e) => onChange('stopTime', e.target.value)}
@@ -623,7 +623,7 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
                 <span className="text-[8px] uppercase font-extrabold text-[#990000] block mb-1 tracking-wider">Logistics</span>
                 <div className="flex flex-col gap-1 mt-1">
                   <span className="text-[9px] uppercase font-bold text-[#990000]">Driver Name:</span>
-                  <input 
+                  <input
                     type="text"
                     value={report.driverName || ''}
                     onChange={(e) => onChange('driverName', e.target.value)}
@@ -635,14 +635,14 @@ const DeliveryChallan = ({ report, copyType, onChange }: { report: any, copyType
             </tr>
           </tbody>
         </table>
-        
+
         {/* Signatures */}
         <div className="flex justify-between w-full mt-auto pt-2 pb-0.5 px-1">
           <div className="text-[9px] font-bold uppercase tracking-wider text-[#990000] flex flex-col items-center justify-end h-12 w-40 text-center">
             <div className="border-b border-dashed border-[#990000] w-full mb-1"></div>
             <span>Receiver's Sign & Seal</span>
           </div>
-          
+
           <div className="text-[9px] font-bold uppercase tracking-wider text-[#990000] flex flex-col items-center justify-end h-12 w-32 text-center">
             <div className="border-b border-dashed border-[#990000] w-full mb-1"></div>
             <span>Driver's Signature</span>
@@ -663,11 +663,41 @@ export default function PrintReportPage() {
   const { id } = useParams();
   const router = useRouter();
   const [report, setReport] = useState<any>(null);
+  const reportRef = useRef<any>(null);
+  const headingSaveTimer = useRef<any>(null);
+  const autoSaveTimer = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [rate, setRate] = useState(0);
 
-  const [dcSaveStatus, setDcSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [invoiceSaveStatus, setInvoiceSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // Keep ref in sync so async callbacks always read latest state
+  useEffect(() => {
+    reportRef.current = report;
+  }, [report]);
+
+  // Auto-save heading to settings (debounced)
+  const saveHeadingToSettings = (headingValue: string) => {
+    if (headingSaveTimer.current) clearTimeout(headingSaveTimer.current);
+    headingSaveTimer.current = setTimeout(async () => {
+      try {
+        // Fetch current settings first to preserve other fields
+        const res = await fetch('/api/settings');
+        const settings = await res.json();
+        const existing = settings.challanInvoiceTemplate || {};
+        await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'challanInvoiceTemplate',
+            value: { ...existing, reportHeading: headingValue },
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to save heading:', err);
+      }
+    }, 500);
+  };
+
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isPrintingAll, setIsPrintingAll] = useState(false);
 
   useEffect(() => {
@@ -677,13 +707,13 @@ export default function PrintReportPage() {
           fetch(`/api/reports/${id}`),
           fetch('/api/settings'),
         ]);
-        
+
         if (!reportRes.ok) {
           console.error('Report not found');
           setLoading(false);
           return;
         }
-        
+
         const foundReport = await reportRes.json();
         const settings = await settingsRes.json();
         const template = settings.challanInvoiceTemplate || {};
@@ -693,7 +723,7 @@ export default function PrintReportPage() {
           'companyName', 'companyTagline', 'companyAddress', 'companyMobile',
           'companyEmail', 'companyGstin', 'companyState', 'companyStateCode', 'companyCertification',
           'bankName', 'bankAccountNumber', 'bankIfscCode',
-          'cgstRate', 'sgstRate', 'hsnCode',
+          'cgstRate', 'sgstRate', 'hsnCode', 'reportHeading',
         ];
         const SCHEMA_DEFAULTS: Record<string, any> = {
           companyName: 'MATRIX INFRA RMC',
@@ -702,6 +732,7 @@ export default function PrintReportPage() {
           companyMobile: 'Mob.: 9325714072 | 9405818311',
           companyState: 'Maharashtra',
           companyStateCode: '27',
+          reportHeading: 'MATRIX INFRA',
         };
         TEMPLATE_FIELDS.forEach(field => {
           if (template[field] !== undefined && template[field] !== '' && (!foundReport[field] || foundReport[field] === SCHEMA_DEFAULTS[field] || foundReport[field] === '')) {
@@ -724,7 +755,8 @@ export default function PrintReportPage() {
 
   // Save template fields to Settings (global defaults for all future reports)
   const saveTemplateToSettings = async () => {
-    if (!report) return;
+    const current = reportRef.current;
+    if (!current) return;
     try {
       await fetch('/api/settings', {
         method: 'POST',
@@ -732,27 +764,86 @@ export default function PrintReportPage() {
         body: JSON.stringify({
           key: 'challanInvoiceTemplate',
           value: {
-            companyName: report.companyName,
-            companyTagline: report.companyTagline,
-            companyAddress: report.companyAddress,
-            companyMobile: report.companyMobile,
-            companyEmail: report.companyEmail,
-            companyGstin: report.companyGstin,
-            companyState: report.companyState,
-            companyStateCode: report.companyStateCode,
-            companyCertification: report.companyCertification,
-            bankName: report.bankName,
-            bankAccountNumber: report.bankAccountNumber,
-            bankIfscCode: report.bankIfscCode,
-            cgstRate: report.cgstRate,
-            sgstRate: report.sgstRate,
-            hsnCode: report.hsnCode,
+            companyName: current.companyName,
+            companyTagline: current.companyTagline,
+            companyAddress: current.companyAddress,
+            companyMobile: current.companyMobile,
+            companyEmail: current.companyEmail,
+            companyGstin: current.companyGstin,
+            companyState: current.companyState,
+            companyStateCode: current.companyStateCode,
+            companyCertification: current.companyCertification,
+            bankName: current.bankName,
+            bankAccountNumber: current.bankAccountNumber,
+            bankIfscCode: current.bankIfscCode,
+            cgstRate: current.cgstRate,
+            sgstRate: current.sgstRate,
+            hsnCode: current.hsnCode,
+            reportHeading: current.reportHeading,
           },
         }),
       });
     } catch (err) {
       console.error('Failed to save template defaults:', err);
     }
+  };
+
+  // Debounced auto-save report + template
+  const debouncedAutoSave = () => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    setAutoSaveStatus('saving');
+    autoSaveTimer.current = setTimeout(async () => {
+      const latest = reportRef.current;
+      if (!latest) return;
+      try {
+        const res = await fetch(`/api/reports/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(latest),
+        });
+        if (res.ok) {
+          // Also save template defaults
+          const settingsRes = await fetch('/api/settings');
+          const settings = await settingsRes.json();
+          const existing = settings.challanInvoiceTemplate || {};
+          await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              key: 'challanInvoiceTemplate',
+              value: {
+                ...existing,
+                companyName: latest.companyName,
+                companyTagline: latest.companyTagline,
+                companyAddress: latest.companyAddress,
+                companyMobile: latest.companyMobile,
+                companyEmail: latest.companyEmail,
+                companyGstin: latest.companyGstin,
+                companyState: latest.companyState,
+                companyStateCode: latest.companyStateCode,
+                companyCertification: latest.companyCertification,
+                bankName: latest.bankName,
+                bankAccountNumber: latest.bankAccountNumber,
+                bankIfscCode: latest.bankIfscCode,
+                cgstRate: latest.cgstRate,
+                sgstRate: latest.sgstRate,
+                hsnCode: latest.hsnCode,
+                reportHeading: latest.reportHeading,
+              },
+            }),
+          });
+          setAutoSaveStatus('saved');
+          setTimeout(() => setAutoSaveStatus('idle'), 2000);
+        } else {
+          setAutoSaveStatus('error');
+          setTimeout(() => setAutoSaveStatus('idle'), 3000);
+        }
+      } catch (err) {
+        console.error('Auto-save failed:', err);
+        setAutoSaveStatus('error');
+        setTimeout(() => setAutoSaveStatus('idle'), 3000);
+      }
+    }, 1000);
   };
 
   const handleFieldChange = (field: string, value: any) => {
@@ -762,55 +853,67 @@ export default function PrintReportPage() {
       if (field === 'rate') {
         setRate(Number(value) || 0);
       }
+      reportRef.current = updated;
       return updated;
     });
-  };
-
-  const handleSaveDC = async () => {
-    setDcSaveStatus('saving');
-    try {
-      const res = await fetch(`/api/reports/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(report),
-      });
-      if (res.ok) {
-        // Also save template defaults globally
-        await saveTemplateToSettings();
-        setDcSaveStatus('saved');
-        setTimeout(() => setDcSaveStatus('idle'), 3000);
-      } else {
-        setDcSaveStatus('error');
-        setTimeout(() => setDcSaveStatus('idle'), 3000);
-      }
-    } catch (err) {
-      console.error(err);
-      setDcSaveStatus('error');
-      setTimeout(() => setDcSaveStatus('idle'), 3000);
+    // Trigger debounced auto-save (reads latest from ref)
+    debouncedAutoSave();
+    // Also save heading to settings immediately (faster debounce)
+    if (field === 'reportHeading') {
+      saveHeadingToSettings(value);
     }
   };
 
-  const handleSaveInvoice = async () => {
-    setInvoiceSaveStatus('saving');
+  // Generate Invoice — fetch next number, save immediately
+  const handleGenerateInvoice = async () => {
+    if (autoSaveTimer.current) { clearTimeout(autoSaveTimer.current); autoSaveTimer.current = null; }
+    const current = reportRef.current || report;
+    if (!current) return;
+
+    let nextNum = 1;
     try {
-      const res = await fetch(`/api/reports/${id}`, {
+      const res = await fetch(
+        `/api/next-invoice?customerName=${encodeURIComponent(current.customerName)}&createdBy=${encodeURIComponent(current.createdBy || '')}`
+      );
+      const data = await res.json();
+      nextNum = data.nextInvoiceNumber || 1;
+    } catch (err) {
+      console.error('Failed to fetch next invoice number:', err);
+    }
+
+    const updated = { ...current, invoiceEnabled: true, invoiceNumber: nextNum };
+    setReport(updated);
+    reportRef.current = updated;
+
+    try {
+      await fetch(`/api/reports/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(report),
+        body: JSON.stringify(updated),
       });
-      if (res.ok) {
-        // Also save template defaults globally
-        await saveTemplateToSettings();
-        setInvoiceSaveStatus('saved');
-        setTimeout(() => setInvoiceSaveStatus('idle'), 3000);
-      } else {
-        setInvoiceSaveStatus('error');
-        setTimeout(() => setInvoiceSaveStatus('idle'), 3000);
-      }
     } catch (err) {
-      console.error(err);
-      setInvoiceSaveStatus('error');
-      setTimeout(() => setInvoiceSaveStatus('idle'), 3000);
+      console.error('Failed to save invoice:', err);
+    }
+  };
+
+  // Remove Invoice
+  const handleRemoveInvoice = async () => {
+    if (autoSaveTimer.current) { clearTimeout(autoSaveTimer.current); autoSaveTimer.current = null; }
+    const current = reportRef.current || report;
+    if (!current) return;
+
+    const updated = { ...current, invoiceEnabled: false, invoiceNumber: 0 };
+    setReport(updated);
+    reportRef.current = updated;
+
+    try {
+      await fetch(`/api/reports/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+    } catch (err) {
+      console.error('Failed to remove invoice:', err);
     }
   };
 
@@ -875,7 +978,7 @@ export default function PrintReportPage() {
   };
 
   const pt = (val: any) => val !== undefined ? Math.round(Number(val)) : 0;
-  
+
   const sw = report.setWeights || {};
   const totalTargets = Object.keys(targets).reduce((acc: any, key) => {
     acc[key] = sw[key] !== undefined ? Number(sw[key]) : (Number(targets[key]) || 0) * batches.length;
@@ -890,20 +993,21 @@ export default function PrintReportPage() {
 
   return (
     <div className="print-wrapper min-h-screen bg-slate-100 flex flex-col items-center pb-20 relative">
-      <button 
-        onClick={() => router.back()} 
+      <button
+        onClick={() => router.back()}
         className="no-print fixed top-4 left-4 z-50 bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-gray-700 font-sans cursor-pointer transition-colors"
       >
         &larr; Back
       </button>
-      <button 
+      <button
         onClick={handlePrintAll}
         disabled={isPrintingAll}
         className="no-print fixed top-4 left-28 z-50 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 font-sans cursor-pointer transition-colors font-semibold text-sm disabled:opacity-50"
       >
         {isPrintingAll ? 'Printing...' : 'Print All'}
       </button>
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         :root {
             --table-cell-padding: 1px;
             --table-margin-top: 0px;
@@ -1154,7 +1258,7 @@ export default function PrintReportPage() {
         {/* ── Section: Batch Report ── */}
         <div className="w-[850px] flex justify-between items-center mt-6 mb-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg no-print font-sans">
           <span className="text-sm font-bold text-slate-700">Batch Report (Read-only)</span>
-          <button 
+          <button
             onClick={handlePrintReport}
             className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer"
           >
@@ -1163,253 +1267,283 @@ export default function PrintReportPage() {
         </div>
 
         <div className="report-container">
-            <div className="report-header" style={{ marginBottom: '5px' }}>
-                <h1 style={{ fontSize: '20px' }}>MATRIX INFRA</h1>
+          <div className="report-header" style={{ marginBottom: '5px' }}>
+            <h1 style={{ fontSize: '20px', margin: 0 }}>
+              <input
+                type="text"
+                value={report.reportHeading ?? 'MATRIX INFRA'}
+                onChange={(e) => handleFieldChange('reportHeading', e.target.value)}
+
+                className="w-full text-center bg-transparent border-none outline-none uppercase font-bold tracking-[1px]"
+                style={{ fontSize: '20px', fontFamily: '"Times New Roman", Times, serif' }}
+                placeholder="MATRIX INFRA"
+              />
+            </h1>
+          </div>
+
+          <div className="sub-header" style={{ marginBottom: '5px', marginTop: '0', flexDirection: 'column', alignItems: 'flex-start', paddingLeft: '40px' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <svg viewBox="0 0 100 100" style={{ width: '45px', height: '45px', marginRight: '15px', marginTop: '4px', overflow: 'hidden' }}>
+                <rect x="0" y="0" width="100" height="100" fill="white" />
+                <polygon points="5,100 35,100 65,0 35,0" fill="#8dc63f" />
+                <polygon points="35,100 65,100 95,0 65,0" fill="#007236" />
+                <rect x="0" y="0" width="100" height="100" fill="none" stroke="black" strokeWidth="4" />
+              </svg>
+              <div className="system-info" style={{ fontSize: '18px', fontWeight: 'bold' }}>MCI 70 N Control System Ver 3.0</div>
             </div>
+            <div style={{ fontSize: '13px', marginTop: '4px', textAlign: 'left', lineHeight: '1.2' }}>SCHWING<br />Stetter</div>
+          </div>
 
-            <div className="sub-header" style={{ marginBottom: '5px', marginTop: '0', flexDirection: 'column', alignItems: 'flex-start', paddingLeft: '40px' }}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <svg viewBox="0 0 100 100" style={{ width: '45px', height: '45px', marginRight: '15px', marginTop: '4px', overflow: 'hidden' }}>
-                        <rect x="0" y="0" width="100" height="100" fill="white" />
-                        <polygon points="5,100 35,100 65,0 35,0" fill="#8dc63f" />
-                        <polygon points="35,100 65,100 95,0 65,0" fill="#007236" />
-                        <rect x="0" y="0" width="100" height="100" fill="none" stroke="black" strokeWidth="4" />
-                    </svg>
-                    <div className="system-info" style={{ fontSize: '18px', fontWeight: 'bold' }}>MCI 70 N Control System Ver 3.0</div>
-                </div>
-                <div style={{ fontSize: '13px', marginTop: '4px', textAlign: 'left', lineHeight: '1.2' }}>SCHWING<br/>Stetter</div>
-            </div>
+          <div className="doc-title" style={{ margin: '20px 0' }}>Docket / Batch Report / Autographic Record</div>
 
-            <div className="doc-title" style={{ margin: '20px 0' }}>Docket / Batch Report / Autographic Record</div>
-
-            <div className="info-section" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '13px' }}>
-                <div style={{ width: '55%' }}>
-                    <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '10px'}}>
-                        <tbody>
-                            <tr><td style={{fontWeight: 'bold', width: '110px', paddingBottom: '2px', paddingLeft: '3px'}}>Batch Date</td><td style={{width: '15px', paddingBottom: '2px', textAlign: 'center', fontWeight: 'bold'}}>:</td><td style={{paddingBottom: '2px'}}>&nbsp; {report.date ? safeFormatDate(report.date, 'dd-MMM-yyyy') : ''}</td></tr>
-                            <tr><td style={{fontWeight: 'bold', paddingBottom: '2px', paddingLeft: '0px'}}>Batch Start Time</td><td style={{paddingBottom: '2px', textAlign: 'center', fontWeight: 'bold'}}>:</td><td style={{paddingBottom: '2px'}}>&nbsp; {report.startTime || ''}</td></tr>
-                            <tr><td style={{fontWeight: 'bold', paddingBottom: '2px', paddingLeft: '0px'}}>Batch End Time</td><td style={{paddingBottom: '2px', textAlign: 'center', fontWeight: 'bold'}}>:</td><td style={{paddingBottom: '2px'}}>&nbsp; {report.stopTime || ''}</td></tr>
-                        </tbody>
-                    </table>
-                    
-                    <table style={{width: '100%', borderCollapse: 'collapse'}}>
-                        <tbody>
-                            <tr><td style={{fontWeight: 'bold', width: '180px', paddingBottom: '3px', verticalAlign: 'middle', whiteSpace: 'nowrap', paddingLeft: '3px'}}>Batch Number / Docket Number</td><td style={{width: '20px', paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle'}}>:</td><td style={{paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px'}}>{report.docketNumber}</td></tr>
-                            <tr><td style={{fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px'}}>Customer</td><td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle'}}>:</td><td style={{paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px'}}>{report.customerName}</td></tr>
-                            <tr><td style={{fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px'}}>Site</td><td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle'}}>:</td><td style={{paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px'}}>{report.site}</td></tr>
-                            <tr><td style={{fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px'}}>Recipe Code</td><td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle'}}>:</td><td style={{paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px'}}>{report.grade}</td></tr>
-                            <tr><td style={{fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px'}}>Recipe Name</td><td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle'}}>:</td><td style={{paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px'}}>{report.grade}</td></tr>
-                            <tr><td style={{fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px'}}>Truck Number</td><td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle'}}>:</td><td style={{paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px'}}>{report.vehicleNumber}</td></tr>
-                            <tr><td style={{fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px'}}>Truck Driver</td><td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle'}}>:</td><td style={{paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px'}}>{report.driverName}</td></tr>
-                            <tr><td style={{fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px'}}>Order Number</td><td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle'}}>:</td><td style={{paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px'}}>{report.orderNumber || '-'}</td></tr>
-                            <tr><td style={{fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px'}}>Batcher Name</td><td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle'}}>:</td><td style={{paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px'}}>{report.batcherName || 'Stetter'}</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div style={{ width: '40%', paddingLeft: '60px' }}>
-                    <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '10px'}}>
-                        <tbody>
-                            <tr>
-                                <td style={{fontWeight: 'bold', paddingBottom: '2px', paddingLeft: '2px', width: '155px'}}>Plant Serial Number:</td>
-                                <td style={{paddingBottom: '2px', textAlign: 'left', paddingLeft: '8px'}}>CP30</td>
-                            </tr>
-                            <tr><td colSpan={4} style={{paddingBottom: '2px'}}>&nbsp;</td></tr>
-                            <tr><td colSpan={4} style={{paddingBottom: '2px'}}>&nbsp;</td></tr>
-                        </tbody>
-                    </table>
-                    
-                    <table style={{width: '100%', borderCollapse: 'collapse'}}>
-                        <tbody>
-                            <tr>
-                                <td style={{fontWeight: 'bold', width: '135px', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap'}}>Ordered Quantity</td>
-                                <td style={{width: '20px', paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center'}}>:</td>
-                                <td style={{paddingBottom: '3px', textAlign: 'left', width: '50px', paddingLeft: '8.9px'}}>{Number(report.orderedQuantity || 0).toFixed(2)}</td>
-                                <td style={{paddingBottom: '3px', paddingLeft: '10px'}}>M&sup3;</td>
-                            </tr>
-                            <tr>
-                                <td style={{fontWeight: 'bold', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap'}}>Production Quantity</td>
-                                <td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center'}}>:</td>
-                                <td style={{paddingBottom: '3px', textAlign: 'left', paddingLeft: '8.9px'}}>{Number(report.quantity || 0).toFixed(2)}</td>
-                                <td style={{paddingBottom: '3px', paddingLeft: '10px'}}>M&sup3;</td>
-                            </tr>
-                            <tr>
-                                <td style={{fontWeight: 'bold', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap'}}>Adj/Manual Quantity</td>
-                                <td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center'}}>:</td>
-                                <td style={{paddingBottom: '3px', textAlign: 'left', paddingLeft: '8.9px'}}>{Number(report.adjManualQuantity || 0).toFixed(2)}</td>
-                                <td style={{paddingBottom: '3px', paddingLeft: '10px'}}>M&sup3;</td>
-                            </tr>
-                            <tr>
-                                <td style={{fontWeight: 'bold', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap'}}>With This Load</td>
-                                <td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center'}}>:</td>
-                                <td style={{paddingBottom: '3px', textAlign: 'left', paddingLeft: '8.9px'}}>{Number(report.withThisLoad || report.quantity || 0).toFixed(2)}</td>
-                                <td style={{paddingBottom: '3px', paddingLeft: '10px'}}>M&sup3;</td>
-                            </tr>
-                            <tr>
-                                <td style={{fontWeight: 'bold', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap'}}>Mixer Capacity</td>
-                                <td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center'}}>:</td>
-                                <td style={{paddingBottom: '3px', textAlign: 'left', paddingLeft: '8.9px'}}>{Number(report.mixerCapacity || 0.5).toFixed(2)}</td>
-                                <td style={{paddingBottom: '3px', paddingLeft: '10px'}}>M&sup3;</td>
-                            </tr>
-                            <tr>
-                                <td style={{fontWeight: 'bold', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap'}}>Batch Size</td>
-                                <td style={{paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center'}}>:</td>
-                                <td style={{paddingBottom: '3px', textAlign: 'left', paddingLeft: '8.9px'}}>{Number(report.batchSize || report.mixerCapacity || 0.5).toFixed(2)}</td>
-                                <td style={{paddingBottom: '3px', paddingLeft: '10px'}}>M&sup3;</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <table className="batch-table">
-                <thead>
-                    <tr>
-                        <th colSpan={5} className="section-head"><b>Aggregate</b></th>
-                        <th colSpan={3} className="section-head"><b>Cement</b></th>
-                        <th colSpan={2} className="section-head"><b>Water</b></th>
-                        <th className="section-head"><b>Silica</b></th>
-                        <th colSpan={2} className="section-head"><b>Admixture</b></th>
-                    </tr>
-                    <tr>
-                        <th>20MM</th><th>SAND</th><th>Moi</th><th>SAND1</th><th>10MM</th>
-                        <th>CEM1</th><th>FILL</th>
-                        <th>WATER</th><th>WAT/I</th>
-                        <th>Silica</th><th>ADM1</th><th>ADM2</th>
-                    </tr>
-                </thead>
+          <div className="info-section" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '13px' }}>
+            <div style={{ width: '55%' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
                 <tbody>
-                    <tr>
-                        <td colSpan={13} style={{textAlign: 'left', padding: '1px 5px'}}>Targets based on batchsize in Kg</td>
-                    </tr>
-                    <tr>
-                        <td>{pt(targets.stone20mm)}</td>
-                        <td>{pt(targets.sand)}</td>
-                        <td style={{whiteSpace: 'nowrap'}}><span style={{fontSize: '11px', marginRight: '4px', lineHeight: '1'}}>in %</span>{pt(targets.moisture) !== 0 ? pt(targets.moisture) : ''}</td>
-                        <td>{pt(targets.sand1)}</td>
-                        <td>{pt(targets.stone10mm)}</td>
-                        <td>{pt(targets.cem1 || 0) + pt(targets.cem2 || 0)}</td>
-                        <td>{pt(targets.flyAsh || 0) + pt(targets.ggbs || 0)}</td>
-                        <td style={{whiteSpace: 'nowrap'}}>{pt(targets.water)} <span style={{marginLeft: '8px'}}>+/-</span></td>
-                        <td>{pt(targets.watIce) !== 0 ? pt(targets.watIce) : '0'}</td>
-                        <td>{pt(targets.silica)}</td>
-                        <td>{targets.adm1 !== undefined ? Number(targets.adm1).toFixed(2) : "0.00"}</td>
-                        <td>{targets.adm2 !== undefined ? Number(targets.adm2).toFixed(2) : "0.00"}</td>
-                    </tr>
-                    <tr className="border-top">
-                        <td colSpan={13} style={{textAlign: 'left', padding: '5px 5px 1px 5px'}}>Actual in Kgs.</td>
-                    </tr>
-                    {batches.map((batch: any, i: number) => (
-                        <tr key={i}>
-                            <td>{batch.stone20mm || 0}</td>
-                            <td>{batch.sand || 0}</td>
-                            <td>{(batch.moisture || 0).toFixed(1)}</td>
-                            <td>{batch.sand1 || 0}</td>
-                            <td>{batch.stone10mm || 0}</td>
-                            <td>{(batch.cem1 || 0) + (batch.cem2 || 0)}</td>
-                            <td>{(batch.flyAsh || 0) + (batch.ggbs || 0)}</td>
-                            <td>{batch.water || 0} <span style={{marginLeft: '12px'}}>0</span></td>
-                            <td>{batch.watIce || 0}</td>
-                            <td>{batch.silica || 0}</td>
-                            <td>{batch.adm1 !== undefined ? Number(batch.adm1).toFixed(2) : "0.00"}</td>
-                            <td>{batch.adm2 !== undefined ? Number(batch.adm2).toFixed(2) : "0.00"}</td>
-                        </tr>
-                    ))}
-                    <tr className="footer-row border-top">
-                        <td colSpan={13} style={{textAlign: 'left', padding: '5px 5px 5px 5px'}}>Total Set Weight in Kgs.</td>
-                    </tr>
-                    <tr>
-                        <td>{totalTargets.stone20mm || 0}</td>
-                        <td>{totalTargets.sand || 0}</td>
-                        <td>0</td>
-                        <td>{totalTargets.sand1 || 0}</td>
-                        <td>{totalTargets.stone10mm || 0}</td>
-                        <td>{(totalTargets.cem1 || 0) + (totalTargets.cem2 || 0)}</td>
-                        <td>{(totalTargets.flyAsh || 0) + (totalTargets.ggbs || 0)}</td>
-                        <td style={{whiteSpace: 'nowrap'}}>{totalTargets.water || 0} <span style={{visibility: 'hidden', marginLeft: '8px'}}>+/-</span></td>
-                        <td>{totalTargets.watIce || 0}</td>
-                        <td>{totalTargets.silica || 0}</td>
-                        <td>{totalTargets.adm1 !== undefined ? Number(totalTargets.adm1).toFixed(2) : "0.00"}</td>
-                        <td>{totalTargets.adm2 !== undefined ? Number(totalTargets.adm2).toFixed(2) : "0.00"}</td>
-                    </tr>
-                    <tr className="footer-row">
-                        <td colSpan={13} style={{textAlign: 'left', padding: '10px 5px 1px 5px'}}>Total Actual in Kgs.</td>
-                    </tr>
-                    <tr className="border-bottom">
-                        <td style={{paddingBottom: '5px'}}>{totals.stone20mm}</td>
-                        <td style={{paddingBottom: '5px'}}>{totals.sand}</td>
-                        <td style={{paddingBottom: '5px'}}>0</td>
-                        <td style={{paddingBottom: '5px'}}>{totals.sand1}</td>
-                        <td style={{paddingBottom: '5px'}}>{totals.stone10mm}</td>
-                        <td style={{paddingBottom: '5px'}}>{(totals.cem1 || 0) + (totals.cem2 || 0)}</td>
-                        <td style={{paddingBottom: '5px'}}>{(totals.flyAsh || 0) + (totals.ggbs || 0)}</td>
-                        <td style={{paddingBottom: '5px', whiteSpace: 'nowrap'}}>{totals.water} <span style={{visibility: 'hidden', marginLeft: '8px'}}>+/-</span></td>
-                        <td style={{paddingBottom: '5px'}}>{totals.watIce}</td>
-                        <td style={{paddingBottom: '5px'}}>{totals.silica}</td>
-                        <td style={{paddingBottom: '5px'}}>{Number(totals.adm1).toFixed(2)}</td>
-                        <td style={{paddingBottom: '5px'}}>{Number(totals.adm2).toFixed(2)}</td>
-                    </tr>
+                  <tr><td style={{ fontWeight: 'bold', width: '110px', paddingBottom: '2px', paddingLeft: '3px' }}>Batch Date</td><td style={{ width: '15px', paddingBottom: '2px', textAlign: 'center', fontWeight: 'bold' }}>:</td><td style={{ paddingBottom: '2px' }}>&nbsp; {report.date ? safeFormatDate(report.date, 'dd-MMM-yyyy') : ''}</td></tr>
+                  <tr><td style={{ fontWeight: 'bold', paddingBottom: '2px', paddingLeft: '0px' }}>Batch Start Time</td><td style={{ paddingBottom: '2px', textAlign: 'center', fontWeight: 'bold' }}>:</td><td style={{ paddingBottom: '2px' }}>&nbsp; {report.startTime || ''}</td></tr>
+                  <tr><td style={{ fontWeight: 'bold', paddingBottom: '2px', paddingLeft: '0px' }}>Batch End Time</td><td style={{ paddingBottom: '2px', textAlign: 'center', fontWeight: 'bold' }}>:</td><td style={{ paddingBottom: '2px' }}>&nbsp; {report.stopTime || ''}</td></tr>
                 </tbody>
-            </table>
+              </table>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  <tr><td style={{ fontWeight: 'bold', width: '180px', paddingBottom: '3px', verticalAlign: 'middle', whiteSpace: 'nowrap', paddingLeft: '3px' }}>Batch Number / Docket Number</td><td style={{ width: '20px', paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }}>:</td><td style={{ paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px' }}>{report.docketNumber}</td></tr>
+                  <tr><td style={{ fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px' }}>Customer</td><td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }}>:</td><td style={{ paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px' }}>{report.customerName}</td></tr>
+                  <tr><td style={{ fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px' }}>Site</td><td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }}>:</td><td style={{ paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px' }}>{report.site}</td></tr>
+                  <tr><td style={{ fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px' }}>Recipe Code</td><td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }}>:</td><td style={{ paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px' }}>{report.grade}</td></tr>
+                  <tr><td style={{ fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px' }}>Recipe Name</td><td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }}>:</td><td style={{ paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px' }}>{report.grade}</td></tr>
+                  <tr><td style={{ fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px' }}>Truck Number</td><td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }}>:</td><td style={{ paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px' }}>{report.vehicleNumber}</td></tr>
+                  <tr><td style={{ fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px' }}>Truck Driver</td><td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }}>:</td><td style={{ paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px' }}>{report.driverName}</td></tr>
+                  <tr><td style={{ fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px' }}>Order Number</td><td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }}>:</td><td style={{ paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px' }}>{report.orderNumber || '-'}</td></tr>
+                  <tr><td style={{ fontWeight: 'bold', paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '3px' }}>Batcher Name</td><td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center', verticalAlign: 'middle' }}>:</td><td style={{ paddingBottom: '3px', verticalAlign: 'middle', paddingLeft: '10px' }}>{report.batcherName || 'Stetter'}</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ width: '40%', paddingLeft: '60px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ fontWeight: 'bold', paddingBottom: '2px', paddingLeft: '2px', width: '155px' }}>Plant Serial Number:</td>
+                    <td style={{ paddingBottom: '2px', textAlign: 'left', paddingLeft: '8px' }}>CP30</td>
+                  </tr>
+                  <tr><td colSpan={4} style={{ paddingBottom: '2px' }}>&nbsp;</td></tr>
+                  <tr><td colSpan={4} style={{ paddingBottom: '2px' }}>&nbsp;</td></tr>
+                </tbody>
+              </table>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ fontWeight: 'bold', width: '135px', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap' }}>Ordered Quantity</td>
+                    <td style={{ width: '20px', paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center' }}>:</td>
+                    <td style={{ paddingBottom: '3px', textAlign: 'left', width: '50px', paddingLeft: '8.9px' }}>{Number(report.orderedQuantity || 0).toFixed(2)}</td>
+                    <td style={{ paddingBottom: '3px', paddingLeft: '10px' }}>M&sup3;</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 'bold', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap' }}>Production Quantity</td>
+                    <td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center' }}>:</td>
+                    <td style={{ paddingBottom: '3px', textAlign: 'left', paddingLeft: '8.9px' }}>{Number(report.quantity || 0).toFixed(2)}</td>
+                    <td style={{ paddingBottom: '3px', paddingLeft: '10px' }}>M&sup3;</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 'bold', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap' }}>Adj/Manual Quantity</td>
+                    <td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center' }}>:</td>
+                    <td style={{ paddingBottom: '3px', textAlign: 'left', paddingLeft: '8.9px' }}>{Number(report.adjManualQuantity || 0).toFixed(2)}</td>
+                    <td style={{ paddingBottom: '3px', paddingLeft: '10px' }}>M&sup3;</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 'bold', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap' }}>With This Load</td>
+                    <td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center' }}>:</td>
+                    <td style={{ paddingBottom: '3px', textAlign: 'left', paddingLeft: '8.9px' }}>{Number(report.withThisLoad || report.quantity || 0).toFixed(2)}</td>
+                    <td style={{ paddingBottom: '3px', paddingLeft: '10px' }}>M&sup3;</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 'bold', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap' }}>Mixer Capacity</td>
+                    <td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center' }}>:</td>
+                    <td style={{ paddingBottom: '3px', textAlign: 'left', paddingLeft: '8.9px' }}>{Number(report.mixerCapacity || 0.5).toFixed(2)}</td>
+                    <td style={{ paddingBottom: '3px', paddingLeft: '10px' }}>M&sup3;</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 'bold', paddingBottom: '3px', paddingLeft: '2px', whiteSpace: 'nowrap' }}>Batch Size</td>
+                    <td style={{ paddingBottom: '3px', fontWeight: 'bold', textAlign: 'center' }}>:</td>
+                    <td style={{ paddingBottom: '3px', textAlign: 'left', paddingLeft: '8.9px' }}>{Number(report.batchSize || report.mixerCapacity || 0.5).toFixed(2)}</td>
+                    <td style={{ paddingBottom: '3px', paddingLeft: '10px' }}>M&sup3;</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <table className="batch-table">
+            <thead>
+              <tr>
+                <th colSpan={5} className="section-head"><b>Aggregate</b></th>
+                <th colSpan={3} className="section-head"><b>Cement</b></th>
+                <th colSpan={2} className="section-head"><b>Water</b></th>
+                <th className="section-head"><b>Silica</b></th>
+                <th colSpan={2} className="section-head"><b>Admixture</b></th>
+              </tr>
+              <tr>
+                <th>20MM</th><th>SAND</th><th>Moi</th><th>SAND1</th><th>10MM</th>
+                <th>CEM1</th><th>FILL</th>
+                <th>WATER</th><th>WAT/I</th>
+                <th>Silica</th><th>ADM1</th><th>ADM2</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colSpan={13} style={{ textAlign: 'left', padding: '1px 5px' }}>Targets based on batchsize in Kg</td>
+              </tr>
+              <tr>
+                <td>{pt(targets.stone20mm)}</td>
+                <td>{pt(targets.sand)}</td>
+                <td style={{ whiteSpace: 'nowrap' }}><span style={{ fontSize: '11px', marginRight: '4px', lineHeight: '1' }}>in %</span>{pt(targets.moisture) !== 0 ? pt(targets.moisture) : ''}</td>
+                <td>{pt(targets.sand1)}</td>
+                <td>{pt(targets.stone10mm)}</td>
+                <td>{pt(targets.cem1 || 0) + pt(targets.cem2 || 0)}</td>
+                <td>{pt(targets.flyAsh || 0) + pt(targets.ggbs || 0)}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{pt(targets.water)} <span style={{ marginLeft: '8px' }}>+/-</span></td>
+                <td>{pt(targets.watIce) !== 0 ? pt(targets.watIce) : '0'}</td>
+                <td>{pt(targets.silica)}</td>
+                <td>{targets.adm1 !== undefined ? Number(targets.adm1).toFixed(2) : "0.00"}</td>
+                <td>{targets.adm2 !== undefined ? Number(targets.adm2).toFixed(2) : "0.00"}</td>
+              </tr>
+              <tr className="border-top">
+                <td colSpan={13} style={{ textAlign: 'left', padding: '5px 5px 1px 5px' }}>Actual in Kgs.</td>
+              </tr>
+              {batches.map((batch: any, i: number) => (
+                <tr key={i}>
+                  <td>{batch.stone20mm || 0}</td>
+                  <td>{batch.sand || 0}</td>
+                  <td>{(batch.moisture || 0).toFixed(1)}</td>
+                  <td>{batch.sand1 || 0}</td>
+                  <td>{batch.stone10mm || 0}</td>
+                  <td>{(batch.cem1 || 0) + (batch.cem2 || 0)}</td>
+                  <td>{(batch.flyAsh || 0) + (batch.ggbs || 0)}</td>
+                  <td>{batch.water || 0} <span style={{ marginLeft: '12px' }}>0</span></td>
+                  <td>{batch.watIce || 0}</td>
+                  <td>{batch.silica || 0}</td>
+                  <td>{batch.adm1 !== undefined ? Number(batch.adm1).toFixed(2) : "0.00"}</td>
+                  <td>{batch.adm2 !== undefined ? Number(batch.adm2).toFixed(2) : "0.00"}</td>
+                </tr>
+              ))}
+              <tr className="footer-row border-top">
+                <td colSpan={13} style={{ textAlign: 'left', padding: '5px 5px 5px 5px' }}>Total Set Weight in Kgs.</td>
+              </tr>
+              <tr>
+                <td>{totalTargets.stone20mm || 0}</td>
+                <td>{totalTargets.sand || 0}</td>
+                <td>0</td>
+                <td>{totalTargets.sand1 || 0}</td>
+                <td>{totalTargets.stone10mm || 0}</td>
+                <td>{(totalTargets.cem1 || 0) + (totalTargets.cem2 || 0)}</td>
+                <td>{(totalTargets.flyAsh || 0) + (totalTargets.ggbs || 0)}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{totalTargets.water || 0} <span style={{ visibility: 'hidden', marginLeft: '8px' }}>+/-</span></td>
+                <td>{totalTargets.watIce || 0}</td>
+                <td>{totalTargets.silica || 0}</td>
+                <td>{totalTargets.adm1 !== undefined ? Number(totalTargets.adm1).toFixed(2) : "0.00"}</td>
+                <td>{totalTargets.adm2 !== undefined ? Number(totalTargets.adm2).toFixed(2) : "0.00"}</td>
+              </tr>
+              <tr className="footer-row">
+                <td colSpan={13} style={{ textAlign: 'left', padding: '10px 5px 1px 5px' }}>Total Actual in Kgs.</td>
+              </tr>
+              <tr className="border-bottom">
+                <td style={{ paddingBottom: '5px' }}>{totals.stone20mm}</td>
+                <td style={{ paddingBottom: '5px' }}>{totals.sand}</td>
+                <td style={{ paddingBottom: '5px' }}>0</td>
+                <td style={{ paddingBottom: '5px' }}>{totals.sand1}</td>
+                <td style={{ paddingBottom: '5px' }}>{totals.stone10mm}</td>
+                <td style={{ paddingBottom: '5px' }}>{(totals.cem1 || 0) + (totals.cem2 || 0)}</td>
+                <td style={{ paddingBottom: '5px' }}>{(totals.flyAsh || 0) + (totals.ggbs || 0)}</td>
+                <td style={{ paddingBottom: '5px', whiteSpace: 'nowrap' }}>{totals.water} <span style={{ visibility: 'hidden', marginLeft: '8px' }}>+/-</span></td>
+                <td style={{ paddingBottom: '5px' }}>{totals.watIce}</td>
+                <td style={{ paddingBottom: '5px' }}>{totals.silica}</td>
+                <td style={{ paddingBottom: '5px' }}>{Number(totals.adm1).toFixed(2)}</td>
+                <td style={{ paddingBottom: '5px' }}>{Number(totals.adm2).toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        
+
         {/* ── Section: Delivery Challan ── */}
         <div className="w-[850px] flex justify-between items-center mt-10 mb-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg no-print font-sans">
-          <span className="text-sm font-bold text-slate-700">Delivery Challan (Editable)</span>
-          <div className="flex gap-2">
-            <button 
-              onClick={handleSaveDC}
-              disabled={dcSaveStatus === 'saving'}
-              className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {dcSaveStatus === 'saving' ? 'Saving...' : dcSaveStatus === 'saved' ? 'Saved ✓' : dcSaveStatus === 'error' ? 'Error ✗' : 'Save Challan'}
-            </button>
-            <button 
-              onClick={handlePrintDC}
-              className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer"
-            >
-              Print Challan
-            </button>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-slate-700">Delivery Challan</span>
+            <span className={`text-xs font-medium transition-opacity ${
+              autoSaveStatus === 'idle' ? 'opacity-0' :
+              autoSaveStatus === 'saving' ? 'text-amber-600 opacity-100' :
+              autoSaveStatus === 'saved' ? 'text-green-600 opacity-100' :
+              'text-red-500 opacity-100'
+            }`}>
+              {autoSaveStatus === 'saving' ? '● Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : autoSaveStatus === 'error' ? '✗ Error' : ''}
+            </span>
           </div>
+          <button
+            onClick={handlePrintDC}
+            className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+          >
+            Print Challan
+          </button>
         </div>
 
         <div className="delivery-challan-container">
-            <DeliveryChallan report={report} copyType="Original Copy" onChange={handleFieldChange} />
-            
-            <div className="flex items-center justify-center w-full px-4 mb-2 opacity-50 relative no-print">
-                <div className="border-t border-dashed border-gray-500 w-full"></div>
-                <div className="absolute text-gray-500 text-[10px] bg-white px-2 font-mono" style={{top: '-8px'}}>✄ CUT HERE</div>
-            </div>
-            
-            <DeliveryChallan report={report} copyType="Customer Copy" onChange={handleFieldChange} />
+          <DeliveryChallan report={report} copyType="Original Copy" onChange={handleFieldChange} />
+
+          <div className="flex items-center justify-center w-full px-4 mb-2 opacity-50 relative no-print">
+            <div className="border-t border-dashed border-gray-500 w-full"></div>
+            <div className="absolute text-gray-500 text-[10px] bg-white px-2 font-mono" style={{ top: '-8px' }}>✄ CUT HERE</div>
+          </div>
+
+          <DeliveryChallan report={report} copyType="Customer Copy" onChange={handleFieldChange} />
         </div>
 
         {/* ── Section: Invoice ── */}
         <div className="w-[850px] flex justify-between items-center mt-10 mb-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg no-print font-sans">
-          <span className="text-sm font-bold text-slate-700">Tax Invoice (Editable)</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-slate-700">Tax Invoice</span>
+            {report.invoiceEnabled && (
+              <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded">
+                Invoice #{report.invoiceNumber}
+              </span>
+            )}
+          </div>
           <div className="flex gap-2">
-            <button 
-              onClick={handleSaveInvoice}
-              disabled={invoiceSaveStatus === 'saving'}
-              className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {invoiceSaveStatus === 'saving' ? 'Saving...' : invoiceSaveStatus === 'saved' ? 'Saved ✓' : invoiceSaveStatus === 'error' ? 'Error ✗' : 'Save Invoice'}
-            </button>
-            <button 
-              onClick={handlePrintInvoice}
-              className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer"
-            >
-              Print Invoice
-            </button>
+            {!report.invoiceEnabled ? (
+              <button
+                onClick={handleGenerateInvoice}
+                className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+              >
+                Generate Invoice
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={handleRemoveInvoice}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+                >
+                  Remove Invoice
+                </button>
+                <button
+                  onClick={handlePrintInvoice}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+                >
+                  Print Invoice
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="invoice-container">
-            <Invoice 
-              report={report} 
-              onChange={handleFieldChange} 
+        {report.invoiceEnabled && (
+          <div className="invoice-container">
+            <Invoice
+              report={report}
+              onChange={handleFieldChange}
             />
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

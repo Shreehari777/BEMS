@@ -54,6 +54,9 @@ const BatchReportSchema = new mongoose.Schema(
     cgstRate: { type: Number, default: 9 },
     sgstRate: { type: Number, default: 9 },
     igstRate: { type: Number, default: 0 },
+    // Invoice toggle
+    invoiceEnabled: { type: Boolean, default: false },
+    invoiceNumber: { type: Number, default: 0 },
     batches: [{
       stone10mm: Number,
       stone20mm: Number,
