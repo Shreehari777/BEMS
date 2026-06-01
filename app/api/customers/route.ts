@@ -12,25 +12,18 @@ export async function GET(req: Request) {
     const query = userId ? { createdBy: userId } : {};
     const customers = await Customer.find(query).sort({ createdAt: -1 }).lean();
 
-    // Dynamically calculate lastOrderNumber based on actual reports in the database
-    const updatedCustomers = await Promise.all(customers.map(async (c) => {
-      const reports = await BatchReport.find({ 
-        customerName: { $regex: new RegExp(`^${c.name}$`, 'i') }, 
-        createdBy: c.createdBy 
-      }).select('orderNumber').lean();
-      
-      let maxOrder = 0;
-      reports.forEach(r => {
-        const num = parseInt(r.orderNumber, 10);
-        if (!isNaN(num) && num > maxOrder) {
-          maxOrder = num;
-        }
-      });
-      
-      return {
-        ...c,
-        lastOrderNumber: maxOrder
-      };
+    const reports = await BatchReport.find(query).select('customerName orderNumber').lean();
+    const maxOrderByCustomer = new Map<string, number>();
+    for (const r of reports) {
+      const key = String(r.customerName || '').toLowerCase();
+      const num = parseInt(String(r.orderNumber), 10);
+      if (!key || Number.isNaN(num)) continue;
+      maxOrderByCustomer.set(key, Math.max(maxOrderByCustomer.get(key) || 0, num));
+    }
+
+    const updatedCustomers = customers.map((c) => ({
+      ...c,
+      lastOrderNumber: maxOrderByCustomer.get(String(c.name).toLowerCase()) || 0,
     }));
 
     return NextResponse.json(updatedCustomers);

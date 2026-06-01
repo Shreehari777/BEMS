@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { Autocomplete } from '@/components/Autocomplete';
 import { useRouter } from 'next/navigation';
 import { authHeaders } from '@/lib/auth';
+import { CACHE_TTL, invalidateCache, peekCache, safeCachedFetch, seedCache } from '@/lib/api-cache';
 
 const MATERIALS = [
   { id: 'stone20mm', label: '20MM' },
@@ -60,55 +61,65 @@ export default function NewEntryPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const [custRes, vehRes, docketRes, recipesRes] = await Promise.all([
-          fetch('/api/customers?t=' + Date.now(), { headers: authHeaders() }),
-          fetch('/api/vehicles?t=' + Date.now(), { headers: authHeaders() }),
-          fetch('/api/reports/next-docket?t=' + Date.now(), { headers: authHeaders() }),
-          fetch('/api/recipes?t=' + Date.now())
-        ]);
-        
-        if (custRes.ok) {
-          try {
-            setCustomers(await custRes.json());
-          } catch (e) { console.error('Error parsing customers JSON'); }
-        }
-        
-        if (vehRes.ok) {
-          try {
-            setVehicles(await vehRes.json());
-          } catch (e) { console.error('Error parsing vehicles JSON'); }
-        }
-        
-        if (docketRes.ok) {
-          try {
-            const data = await docketRes.json();
-            if (data && data.nextDocketNumber) {
-              setDocketNumber(String(data.nextDocketNumber).padStart(3, '0'));
-            }
-          } catch (e) { console.error('Error parsing docket JSON'); }
-        }
+    const applyBootstrap = (payload: {
+      customers: any[];
+      vehicles: any[];
+      recipes: any[];
+      nextDocketNumber: number;
+    }) => {
+      const headers = authHeaders();
+      setCustomers(payload.customers);
+      setVehicles(payload.vehicles);
+      setRecipes(payload.recipes);
+      setDocketNumber(String(payload.nextDocketNumber).padStart(3, '0'));
+      setGrade(payload.recipes.length > 0 ? payload.recipes[0].grade : '');
 
-        if (recipesRes.ok) {
-          try {
-            const recipeData = await recipesRes.json();
-            setRecipes(recipeData);
-            if (recipeData.length > 0) {
-              setGrade(recipeData[0].grade);
-            } else {
-              setGrade('');
-            }
-          } catch (e) { console.error('Error parsing recipes JSON'); }
+      seedCache('/api/customers', payload.customers, { headers });
+      seedCache('/api/vehicles', payload.vehicles, { headers });
+      seedCache('/api/recipes', payload.recipes);
+      seedCache('/api/next-docket', { nextDocketNumber: payload.nextDocketNumber }, { headers });
+    };
+
+    const loadInitialData = async (force = false) => {
+      const headers = authHeaders();
+      const cached = !force
+        ? peekCache<{
+            customers: any[];
+            vehicles: any[];
+            recipes: any[];
+            nextDocketNumber: number;
+          }>('/api/bootstrap', { headers })
+        : null;
+      if (cached) {
+        applyBootstrap(cached);
+        return;
+      }
+
+      setLoadingInitial(true);
+      try {
+        const payload = await safeCachedFetch<{
+          customers: any[];
+          vehicles: any[];
+          recipes: any[];
+          nextDocketNumber: number;
+        }>('/api/bootstrap', { headers, ttl: CACHE_TTL.long, force });
+
+        if (payload) {
+          applyBootstrap(payload);
         }
-      } catch (e) {
-        console.error('Error loading initial data:', e);
+      } catch {
+        /* DB offline — layout banner explains */
       }
       setLoadingInitial(false);
-    }
+    };
+
     loadInitialData();
 
-    const handleUpdate = () => loadInitialData();
+    const handleUpdate = () => {
+      invalidateCache('/api/bootstrap');
+      invalidateCache('/api/session');
+      loadInitialData(true);
+    };
     window.addEventListener('bemsDataUpdated', handleUpdate);
     return () => window.removeEventListener('bemsDataUpdated', handleUpdate);
   }, []);
@@ -142,10 +153,13 @@ export default function NewEntryPage() {
 
   const loadNextDocket = async () => {
     try {
-      const res = await fetch('/api/reports/next-docket?t=' + Date.now(), { headers: authHeaders() });
-      if (res.ok) {
-        const { nextDocketNumber } = await res.json();
-        setDocketNumber(String(nextDocketNumber).padStart(3, '0'));
+      const data = await safeCachedFetch<{ nextDocketNumber?: number }>('/api/next-docket', {
+        headers: authHeaders(),
+        ttl: CACHE_TTL.short,
+        force: true,
+      });
+      if (data?.nextDocketNumber) {
+        setDocketNumber(String(data.nextDocketNumber).padStart(3, '0'));
       }
     } catch (e) {}
   };
@@ -177,6 +191,10 @@ export default function NewEntryPage() {
       if (res.ok) {
         const createdReport = await res.json();
         const createdId = createdReport._id;
+        invalidateCache('/api/reports');
+        invalidateCache('/api/customers');
+        invalidateCache('/api/bootstrap');
+        invalidateCache('/api/next-docket');
 
         // Clear form
         setOrderNumber('');
@@ -189,8 +207,9 @@ export default function NewEntryPage() {
         setStartTime(getCurrentTimeFormatted());
         setStopTime('');
         
-        // Load next docket
-        loadNextDocket();
+        // Dispatch event to invalidate cache across layout & active tabs,
+        // which clears the cache and fetches the fresh next-docket and customer orders list!
+        window.dispatchEvent(new Event('bemsDataUpdated'));
         
         // Redirect to print page with auto-print instruction
         router.push(`/print/${createdId}?print=true`);
@@ -205,7 +224,38 @@ export default function NewEntryPage() {
   };
 
   if (loadingInitial) {
-    return <div className="p-8 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
+    return (
+      <div className="max-w-5xl mx-auto animate-pulse">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+            <div className="h-6 w-36 bg-slate-200 rounded"></div>
+            <div className="h-6 w-24 bg-slate-200 rounded"></div>
+          </div>
+          <div className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-3 w-20 bg-slate-200 rounded"></div>
+                  <div className="h-10 bg-slate-50 border border-slate-200 rounded-lg"></div>
+                </div>
+              ))}
+            </div>
+            <div className="h-1 bg-slate-100 my-4"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-3 w-20 bg-slate-200 rounded"></div>
+                  <div className="h-10 bg-slate-50 border border-slate-200 rounded-lg"></div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end pt-4">
+              <div className="h-10 w-32 bg-slate-200 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

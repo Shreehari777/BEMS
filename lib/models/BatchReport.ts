@@ -130,5 +130,7 @@ const BatchReportSchema = new mongoose.Schema(
 // ─── Indexes for fast queries ───
 BatchReportSchema.index({ createdBy: 1, date: -1, docketNumber: -1 });
 BatchReportSchema.index({ createdBy: 1, customerName: 1 });
+BatchReportSchema.index({ createdBy: 1, docketNumber: -1 });
+BatchReportSchema.index({ createdBy: 1, customerName: 1, date: -1 });
 
 export default mongoose.models.BatchReport || mongoose.model('BatchReport', BatchReportSchema);

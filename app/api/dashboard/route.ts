@@ -29,12 +29,15 @@ export async function GET() {
     const activeUsers = allUsers.filter((u: any) => u.isActive !== false).length;
     const pausedUsers = totalUsers - activeUsers;
 
-    // Get all latest subscriptions for each user
-    const allSubs = await Subscription.find({}).sort({ createdAt: -1 }).lean() as any[];
+    // Use aggregation pipeline to get latest sub per user in the DB
+    const latestSubs = await Subscription.aggregate([
+      { $sort: { createdAt: -1 } },
+      { $group: { _id: '$userId', sub: { $first: '$$ROOT' } } },
+    ]);
     const latestSubByUser: Record<string, any> = {};
-    for (const sub of allSubs) {
-      if (!latestSubByUser[sub.userId]) {
-        latestSubByUser[sub.userId] = sub;
+    for (const item of latestSubs) {
+      if (item._id) {
+        latestSubByUser[item._id.toString()] = item.sub;
       }
     }
 
@@ -77,17 +80,35 @@ export async function GET() {
     // Sort expiring soon by days left (ascending)
     expiringSoon.sort((a, b) => a.daysLeft - b.daysLeft);
 
-    // --- Revenue Overview ---
-    const paidPayments = await Payment.find({ status: 'paid' }).lean() as any[];
-    const totalRevenue = paidPayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
-    const monthPayments = paidPayments.filter((p: any) => new Date(p.createdAt) >= startOfMonth);
-    const monthRevenue = monthPayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+    const [revenueStats, recentPayments] = await Promise.all([
+      Payment.aggregate([
+        { $match: { status: 'paid' } },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$amount' },
+            totalPayments: { $sum: 1 },
+            monthRevenue: {
+              $sum: {
+                $cond: [
+                  { $gte: ['$createdAt', startOfMonth] },
+                  '$amount',
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ]),
+      Payment.find({ status: 'paid' })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean()
+    ]) as [any[], any[]];
 
-    // Recent payments (last 5)
-    const recentPayments = await Payment.find({ status: 'paid' })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .lean() as any[];
+    const totalRevenue = revenueStats[0]?.totalRevenue || 0;
+    const monthRevenue = revenueStats[0]?.monthRevenue || 0;
+    const totalPaymentsCount = revenueStats[0]?.totalPayments || 0;
 
     // Map user names to recent payments
     const userMap: Record<string, string> = {};
@@ -135,7 +156,7 @@ export async function GET() {
       revenue: {
         totalRevenue,
         monthRevenue,
-        totalPayments: paidPayments.length,
+        totalPayments: totalPaymentsCount,
       },
       recentPayments: recentPaymentsWithNames,
       // Dockets per user

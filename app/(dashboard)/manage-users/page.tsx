@@ -1,13 +1,10 @@
 'use client';
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, UserPlus, Trash2, Shield, User, Eye, EyeOff, CreditCard, X, Check, Clock, KeyRound } from 'lucide-react';
-import { TabContext } from '@/lib/TabContext';
+import { cachedFetch, CACHE_TTL, invalidateCache } from '@/lib/api-cache';
 
 export default function ManageUsersPage() {
-  const activeTab = useContext(TabContext);
-  const isActive = activeTab === 'Manage Users';
-
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,54 +45,51 @@ export default function ManageUsersPage() {
     setCustomAmount('0');
   };
 
-  const fetchUsers = async (silent = false) => {
+  const fetchUsers = async (silent = false, force = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch('/api/users?t=' + Date.now());
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-      }
+      const data = await cachedFetch<any[]>('/api/users', {
+        ttl: CACHE_TTL.medium,
+        force,
+      });
+      if (data) setUsers(data);
     } catch (e) {
       console.error('Failed to load users');
     }
     if (!silent) setLoading(false);
   };
 
-  const fetchPlans = async () => {
+  const fetchPlans = async (force = false) => {
     try {
-      const res = await fetch('/api/plans?all=true&t=' + Date.now());
-      if (res.ok) setPlans(await res.json());
+      const data = await cachedFetch<any[]>('/api/plans?all=true', {
+        ttl: CACHE_TTL.plans,
+        force,
+      });
+      if (data) setPlans(data);
     } catch (e) {}
   };
 
-  const fetchSubscriptions = async () => {
+  const fetchSubscriptions = async (force = false) => {
     try {
-      const res = await fetch('/api/subscriptions?all=true&t=' + Date.now());
-      if (res.ok) {
-        const subs = await res.json();
-        // Group by userId — latest first (already sorted)
-        const map: any = {};
-        for (const sub of subs) {
-          if (!map[sub.userId]) map[sub.userId] = sub;
-        }
-        setSubscriptions(map);
+      const subs = await cachedFetch<any[]>('/api/subscriptions?all=true', {
+        ttl: CACHE_TTL.plans,
+        force,
+      });
+      const map: Record<string, any> = {};
+      for (const sub of subs) {
+        if (!map[sub.userId]) map[sub.userId] = sub;
       }
+      setSubscriptions(map);
     } catch (e) {}
   };
 
   useEffect(() => {
-    if (isActive) {
-      const hasData = users.length > 0;
-      const t = setTimeout(() => {
-        fetchUsers(hasData);
-        fetchPlans();
-        fetchSubscriptions();
-      }, 10);
-      return () => clearTimeout(t);
-    }
+    const silent = users.length > 0;
+    fetchUsers(silent);
+    fetchPlans();
+    fetchSubscriptions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive]);
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,7 +109,7 @@ export default function ManageUsersPage() {
       } else {
         setForm({ username: '', password: '', displayName: '' });
         setShowForm(false);
-        fetchUsers();
+        fetchUsers(false, true);
       }
     } catch (e) {
       setError('Failed to create user');
@@ -129,7 +123,8 @@ export default function ManageUsersPage() {
     try {
       const res = await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
-        fetchUsers();
+        invalidateCache('/api/users');
+        fetchUsers(false, true);
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to delete user');
@@ -155,7 +150,7 @@ export default function ManageUsersPage() {
         alert(data.error || 'Failed to update user status');
       } else {
         // Refresh subscription data to reflect freeze/unfreeze
-        fetchSubscriptions();
+        fetchSubscriptions(true);
       }
     } catch (e) {
       setUsers(prev => prev.map(u => u._id === id ? { ...u, isActive: currentStatus } : u));
@@ -245,7 +240,7 @@ export default function ManageUsersPage() {
         setActivatingUserId(null);
         setSelectedPlanId('');
         resetCustomForm();
-        fetchSubscriptions();
+        fetchSubscriptions(true);
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to activate subscription');
@@ -287,7 +282,7 @@ export default function ManageUsersPage() {
 
       if (res.ok) {
         setActivatingUserId(null);
-        fetchSubscriptions();
+        fetchSubscriptions(true);
       } else {
         const data = await res.json();
         alert(data.error || 'Failed to update subscription');
@@ -322,8 +317,42 @@ export default function ManageUsersPage() {
 
   if (loading) {
     return (
-      <div className="h-64 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="space-y-6 animate-pulse">
+        {/* Header skeleton */}
+        <div className="flex justify-between items-end">
+          <div>
+            <div className="h-7 w-48 bg-slate-200 rounded-lg" />
+            <div className="h-4 w-72 bg-slate-100 rounded mt-2" />
+          </div>
+          <div className="h-10 w-28 bg-slate-200 rounded-lg" />
+        </div>
+        {/* Table skeleton */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Table header */}
+          <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex gap-6">
+            {['w-16', 'w-20', 'w-12', 'w-28', 'w-14', 'w-20'].map((w, i) => (
+              <div key={i} className={`h-3 ${w} bg-slate-200 rounded`} />
+            ))}
+          </div>
+          {/* Table rows */}
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="px-6 py-4 border-b border-slate-100 flex items-center gap-6">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-9 h-9 bg-slate-200 rounded-full shrink-0" />
+                <div className="h-4 w-24 bg-slate-200 rounded" />
+              </div>
+              <div className="h-4 w-20 bg-slate-100 rounded flex-1" />
+              <div className="h-5 w-16 bg-slate-100 rounded-full" />
+              <div className="h-5 w-36 bg-slate-100 rounded-full flex-1" />
+              <div className="h-8 w-16 bg-slate-100 rounded-lg" />
+              <div className="flex gap-2 justify-end">
+                <div className="h-8 w-8 bg-slate-100 rounded-lg" />
+                <div className="h-8 w-8 bg-slate-100 rounded-lg" />
+                <div className="h-8 w-8 bg-slate-100 rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

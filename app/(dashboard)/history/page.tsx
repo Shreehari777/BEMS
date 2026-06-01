@@ -1,17 +1,14 @@
 'use client';
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, Trash2, Download, Search, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import * as xlsx from 'xlsx';
-import { TabContext } from '@/lib/TabContext';
-import { useRouter } from 'next/navigation';
+import { cachedFetch, CACHE_TTL, invalidateCache } from '@/lib/api-cache';
 import { authHeaders } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 
 export default function HistoryPage() {
   const router = useRouter();
-  const activeTab = useContext(TabContext);
-  const isActive = activeTab === 'History' || activeTab === 'Dashboard';
 
   const [reports, setReports] = useState<any[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -25,6 +22,8 @@ export default function HistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; type: 'single' | 'all'; id?: string }>({ open: false, type: 'single' });
 
   useEffect(() => {
@@ -36,8 +35,8 @@ export default function HistoryPage() {
   }, [search]);
 
   useEffect(() => {
-    if (!isActive) return;
-    
+    let cancelled = false;
+
     const fetchReports = async () => {
       if (reports.length === 0) setLoading(true);
       try {
@@ -47,20 +46,33 @@ export default function HistoryPage() {
         if (endDate) params.append('endDate', endDate);
         params.append('page', String(currentPage));
         params.append('limit', String(itemsPerPage));
-        params.append('_t', String(Date.now())); // cache buster
-        
-        const res = await fetch(`/api/reports?${params.toString()}`, { cache: 'no-store', headers: authHeaders() });
-        if (res.ok) {
-          const result = await res.json();
+
+        const url = `/api/reports?${params.toString()}`;
+        const result = await cachedFetch<{ data?: any[]; total?: number }>(url, {
+          headers: authHeaders(),
+          ttl: CACHE_TTL.short,
+        });
+        if (!cancelled && result) {
           setReports(result.data || []);
           setTotalItems(result.total || 0);
         }
       } catch (e) {}
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
 
     fetchReports();
-  }, [debouncedSearch, startDate, endDate, isActive, currentPage]);
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearch, startDate, endDate, currentPage, refreshKey]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setRefreshKey(p => p + 1);
+    };
+    window.addEventListener('bemsDataUpdated', handleUpdate);
+    return () => window.removeEventListener('bemsDataUpdated', handleUpdate);
+  }, []);
 
   const handleDelete = (id: string) => {
     setConfirmDialog({ open: true, type: 'single', id });
@@ -90,6 +102,8 @@ export default function HistoryPage() {
       } else if (dialogType === 'all') {
         await fetch('/api/reports', { method: 'DELETE', headers: authHeaders() });
       }
+      invalidateCache('/api/reports');
+      window.dispatchEvent(new Event('bemsDataUpdated'));
     } catch (e) {
       console.error(e);
       setReports(previousReports); // Revert on failure
@@ -123,10 +137,27 @@ export default function HistoryPage() {
         'Date': format(new Date(r.date), 'dd/MM/yyyy'),
       }));
 
-      const ws = xlsx.utils.json_to_sheet(dataForExcel);
-      const wb = xlsx.utils.book_new();
-      xlsx.utils.book_append_sheet(wb, ws, 'Reports');
-      xlsx.writeFile(wb, `BEMS_Reports_${format(new Date(), 'dd_MM_yyyy')}.xlsx`);
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Reports');
+      if (dataForExcel.length > 0) {
+        worksheet.columns = Object.keys(dataForExcel[0]).map((key) => ({
+          header: key,
+          key,
+          width: 16,
+        }));
+        dataForExcel.forEach((row: Record<string, unknown>) => worksheet.addRow(row));
+      }
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `BEMS_Reports_${format(new Date(), 'dd_MM_yyyy')}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
     }
@@ -191,10 +222,27 @@ export default function HistoryPage() {
           />
         </div>
       </div>
-
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print-container">
         {loading ? (
-          <div className="p-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+          <div className="animate-pulse space-y-4 p-4">
+            <div className="grid grid-cols-10 gap-4 border-b border-slate-100 pb-3">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="h-4 bg-slate-200 rounded"></div>
+              ))}
+            </div>
+            {[...Array(5)].map((_, rowIndex) => (
+              <div key={rowIndex} className="grid grid-cols-10 gap-4 py-2 border-b border-slate-50 last:border-0">
+                <div className="h-4 bg-slate-100 rounded col-span-1"></div>
+                <div className="h-4 bg-slate-100 rounded col-span-1"></div>
+                <div className="h-4 bg-slate-100 rounded col-span-1"></div>
+                <div className="h-4 bg-slate-100 rounded col-span-2"></div>
+                <div className="h-4 bg-slate-100 rounded col-span-2"></div>
+                <div className="h-4 bg-slate-100 rounded col-span-1"></div>
+                <div className="h-4 bg-slate-100 rounded col-span-1"></div>
+                <div className="h-4 bg-slate-100 rounded col-span-1"></div>
+              </div>
+            ))}
+          </div>
         ) : reports.length === 0 ? (
           <div className="p-8 text-center text-gray-500 text-sm">No reports found matching criteria.</div>
         ) : (

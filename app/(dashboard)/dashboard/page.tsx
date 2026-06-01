@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FileText,
   CalendarDays,
@@ -17,7 +17,7 @@ import {
   TrendingUp,
   Receipt,
 } from 'lucide-react';
-import { TabContext } from '@/lib/TabContext';
+import { cachedFetch, CACHE_TTL, peekCache } from '@/lib/api-cache';
 
 interface DashboardData {
   todayCount: number;
@@ -58,27 +58,80 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const activeTab = useContext(TabContext);
-  const isActive = activeTab === 'Dashboard';
-
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DashboardData | null>(() =>
+    peekCache<DashboardData>('/api/dashboard')
+  );
+  const [loading, setLoading] = useState(() => !peekCache<DashboardData>('/api/dashboard'));
 
   useEffect(() => {
-    if (!isActive) return;
-    // Only show spinner on first load; silently refresh when data already cached
-    if (!data) setLoading(true);
-    fetch('/api/dashboard?t=' + Date.now())
-      .then((r) => r.json())
-      .then((d) => setData(d))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [isActive]);
+    let cancelled = false;
+    const load = async (force = false) => {
+      try {
+        const result = await cachedFetch<DashboardData>('/api/dashboard', {
+          ttl: CACHE_TTL.medium,
+          force,
+        });
+        if (!cancelled && result) setData(result);
+      } catch {
+        /* keep previous data */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+
+    const handleUpdate = () => {
+      load(true);
+    };
+    window.addEventListener('bemsDataUpdated', handleUpdate);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('bemsDataUpdated', handleUpdate);
+    };
+  }, []);
 
   if (loading || !data) {
     return (
-      <div className="h-64 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="space-y-8 animate-pulse">
+        {/* ======= REPORT STATS SKELETON ======= */}
+        <div>
+          <div className="h-6 w-48 bg-slate-200 rounded mb-4"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="h-28 bg-slate-100 rounded-xl border border-slate-200"></div>
+            <div className="h-28 bg-slate-100 rounded-xl border border-slate-200"></div>
+            <div className="h-28 bg-slate-100 rounded-xl border border-slate-200"></div>
+          </div>
+        </div>
+
+        {/* ======= USER SUMMARY SKELETON ======= */}
+        <div>
+          <div className="h-6 w-36 bg-slate-200 rounded mb-4"></div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="h-20 bg-slate-100 rounded-xl border border-slate-200"></div>
+            <div className="h-20 bg-slate-100 rounded-xl border border-slate-200"></div>
+            <div className="h-20 bg-slate-100 rounded-xl border border-slate-200"></div>
+            <div className="h-20 bg-slate-100 rounded-xl border border-slate-200"></div>
+            <div className="h-20 bg-slate-100 rounded-xl border border-slate-200"></div>
+          </div>
+        </div>
+
+        {/* ======= REVENUE OVERVIEW SKELETON ======= */}
+        <div>
+          <div className="h-6 w-40 bg-slate-200 rounded mb-4"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="h-28 bg-slate-100 rounded-xl border border-slate-200"></div>
+            <div className="h-28 bg-slate-100 rounded-xl border border-slate-200"></div>
+            <div className="h-28 bg-slate-100 rounded-xl border border-slate-200"></div>
+          </div>
+        </div>
+
+        {/* ======= BOTTOM GRID SKELETON ======= */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="h-64 bg-slate-100 rounded-xl border border-slate-200"></div>
+          <div className="h-64 bg-slate-100 rounded-xl border border-slate-200"></div>
+          <div className="h-64 bg-slate-100 rounded-xl border border-slate-200"></div>
+        </div>
       </div>
     );
   }

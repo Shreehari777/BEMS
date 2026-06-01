@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, Save, RefreshCw, Plus, Trash2 } from 'lucide-react';
-import { TabContext } from '@/lib/TabContext';
+import { cachedFetch, CACHE_TTL } from '@/lib/api-cache';
 
 const DEFAULT_GRADES = ['M10', 'M15', 'M20', 'M25', 'M30', 'M35', 'M40', 'M45', 'M50', 'M55', 'M60', 'M65', 'M70'];
 const MATERIALS = [
@@ -22,9 +22,6 @@ const MATERIALS = [
 ];
 
 export default function RecipesPage() {
-  const activeTab = useContext(TabContext);
-  const isActive = activeTab === 'Edit Recipe' || activeTab === 'Dashboard';
-
   const [data, setDataState] = useState<{
     grades: string[];
     recipes: Record<string, any>;
@@ -38,18 +35,14 @@ export default function RecipesPage() {
   const grades = data.grades;
   const tolerances = data.tolerances;
 
-  const fetchData = async () => {
+  const fetchData = async (showSpinner = true) => {
+    if (showSpinner && data.grades.length === 0) setLoading(true);
     try {
-      const [recRes, setRes] = await Promise.all([
-        fetch('/api/recipes?t=' + Date.now()),
-        fetch('/api/settings?t=' + Date.now())
+      const [recData, setDataVal] = await Promise.all([
+        cachedFetch<any[]>('/api/recipes', { ttl: CACHE_TTL.long }),
+        cachedFetch<any>('/api/settings', { ttl: CACHE_TTL.long }),
       ]);
-      
-      let recData = [];
-      if (recRes.ok) recData = await recRes.json();
-      
-      let setDataVal: any = {};
-      if (setRes.ok) setDataVal = await setRes.json();
+      if (!recData) return;
 
       let dbGrades = Array.isArray(recData) ? recData.map((r: any) => r.grade) : [];
       const recObj: Record<string, any> = {};
@@ -110,12 +103,10 @@ export default function RecipesPage() {
   }, []);
 
   useEffect(() => {
-    if (isActive) {
-      const t = setTimeout(() => fetchData(), 10);
-      return () => clearTimeout(t);
-    }
+    const t = setTimeout(() => fetchData(data.grades.length === 0), 0);
+    return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive]);
+  }, []);
 
   const handleInputChange = (grade: string, field: string, value: string) => {
     // Store raw string while typing to allow intermediate states like "0.", "1.2"

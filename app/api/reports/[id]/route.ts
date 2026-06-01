@@ -5,7 +5,12 @@ import BatchReport from '@/lib/models/BatchReport';
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    
+
+    // Reserved path — handled by /api/next-docket (dynamic [id] would match otherwise)
+    if (id === 'next-docket') {
+      return NextResponse.json({ error: 'Use /api/next-docket' }, { status: 404 });
+    }
+
     await dbConnect();
     
     const report = await BatchReport.findById(id).lean();

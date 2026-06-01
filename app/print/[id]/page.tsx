@@ -834,6 +834,7 @@ export default function PrintReportPage() {
           });
           setAutoSaveStatus('saved');
           setTimeout(() => setAutoSaveStatus('idle'), 2000);
+          window.dispatchEvent(new Event('bemsDataUpdated'));
         } else {
           setAutoSaveStatus('error');
           setTimeout(() => setAutoSaveStatus('idle'), 3000);
@@ -891,6 +892,7 @@ export default function PrintReportPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
       });
+      window.dispatchEvent(new Event('bemsDataUpdated'));
     } catch (err) {
       console.error('Failed to save invoice:', err);
     }
@@ -912,6 +914,7 @@ export default function PrintReportPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
       });
+      window.dispatchEvent(new Event('bemsDataUpdated'));
     } catch (err) {
       console.error('Failed to remove invoice:', err);
     }

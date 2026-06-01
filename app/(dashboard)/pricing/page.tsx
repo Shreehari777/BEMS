@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, Check, Clock, AlertTriangle, CreditCard, Crown, Zap, Shield } from 'lucide-react';
-import { TabContext } from '@/lib/TabContext';
 import { getCurrentUser } from '@/lib/auth';
+import { cachedFetch, CACHE_TTL, invalidateCache } from '@/lib/api-cache';
 
 const PLAN_ICONS = [Zap, Crown, Shield, CreditCard];
 const PLAN_GRADIENTS = [
@@ -14,27 +14,25 @@ const PLAN_GRADIENTS = [
 ];
 
 export default function PricingPage() {
-  const activeTab = useContext(TabContext);
-  const isActive = activeTab === 'Pricing';
-
   const [plans, setPlans] = useState<any[]>([]);
   const [subscription, setSubscription] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [startingTrial, setStartingTrial] = useState(false);
   const user = getCurrentUser();
 
-  const fetchData = async () => {
+  const fetchData = async (force = false) => {
     if (!user?.id) return;
     if (plans.length === 0) setLoading(true);
     try {
-      const [plansRes, subRes] = await Promise.all([
-        fetch('/api/plans?t=' + Date.now()),
-        fetch(`/api/subscriptions?userId=${user.id}&t=` + Date.now()),
+      const [plansData, subData] = await Promise.all([
+        cachedFetch<any[]>('/api/plans', { ttl: CACHE_TTL.plans, force }),
+        cachedFetch<any>(`/api/subscriptions?userId=${user.id}`, {
+          ttl: CACHE_TTL.plans,
+          force,
+        }),
       ]);
-      if (plansRes.ok) setPlans(await plansRes.json());
-      if (subRes.ok) {
-        setSubscription(await subRes.json());
-      }
+      setPlans(plansData);
+      setSubscription(subData);
     } catch (e) {
       console.error('Failed to load pricing data');
     }
@@ -42,8 +40,9 @@ export default function PricingPage() {
   };
 
   useEffect(() => {
-    if (isActive) fetchData();
-  }, [isActive]);
+              fetchData(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleStartTrial = async (plan: any) => {
     if (!user?.id) return;
@@ -55,7 +54,7 @@ export default function PricingPage() {
         body: JSON.stringify({ userId: user.id, action: 'start-trial', planId: plan._id }),
       });
       if (res.ok) {
-        fetchData();
+        fetchData(true);
         // Trigger refresh in layout
         window.dispatchEvent(new Event('subscriptionUpdated'));
       } else {
@@ -114,7 +113,7 @@ export default function PricingPage() {
             });
 
             if (verifyRes.ok) {
-              fetchData();
+              fetchData(true);
               window.dispatchEvent(new Event('subscriptionUpdated'));
             } else {
               alert('Payment verification failed. Contact admin.');

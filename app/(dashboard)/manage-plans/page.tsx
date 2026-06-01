@@ -1,13 +1,10 @@
 'use client';
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, Plus, Trash2, Edit2, X, Check, CreditCard } from 'lucide-react';
-import { TabContext } from '@/lib/TabContext';
+import { cachedFetch, CACHE_TTL, invalidateCache } from '@/lib/api-cache';
 
 export default function ManagePlansPage() {
-  const activeTab = useContext(TabContext);
-  const isActive = activeTab === 'Manage Plans';
-
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,20 +20,22 @@ export default function ManagePlansPage() {
     order: 0,
   });
 
-  const fetchPlans = async (silent = false) => {
+  const fetchPlans = async (silent = false, force = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch('/api/plans?all=true&t=' + Date.now());
-      if (res.ok) setPlans(await res.json());
+      const data = await cachedFetch<any[]>('/api/plans?all=true', {
+        ttl: CACHE_TTL.plans,
+        force,
+      });
+      if (data) setPlans(data);
     } catch (e) {}
     if (!silent) setLoading(false);
   };
 
   useEffect(() => {
-    if (isActive) {
-      fetchPlans(plans.length > 0);
-    }
-  }, [isActive]);
+    fetchPlans(plans.length > 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const resetForm = () => {
     setForm({ name: '', durationDays: 30, price: 0, trialDays: 0, description: '', order: 0 });
@@ -66,7 +65,7 @@ export default function ManagePlansPage() {
         setError(data.error || 'Failed to save plan');
       } else {
         resetForm();
-        fetchPlans();
+        fetchPlans(true, true);
       }
     } catch (e) {
       setError('Failed to save plan');
@@ -105,7 +104,10 @@ export default function ManagePlansPage() {
     if (!confirm('Delete this plan? This cannot be undone.')) return;
     try {
       const res = await fetch(`/api/plans?id=${id}`, { method: 'DELETE' });
-      if (res.ok) fetchPlans();
+      if (res.ok) {
+        invalidateCache('/api/plans');
+        fetchPlans(true, true);
+      }
     } catch (e) {}
   };
 

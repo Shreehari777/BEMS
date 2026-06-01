@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef, useContext } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Loader2, Plus, Trash2, Edit2, AlertCircle } from 'lucide-react';
 import { authHeaders } from '@/lib/auth';
-import { TabContext } from '@/lib/TabContext';
+import { cachedFetch, CACHE_TTL, invalidateCache } from '@/lib/api-cache';
 
 export default function CustomersPage() {
   const nameRef = useRef<HTMLInputElement>(null);
@@ -21,21 +21,21 @@ export default function CustomersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const fetchCustomers = async (showSpinner = true) => {
-    if (showSpinner) setLoading(true);
+  const fetchCustomers = async (showSpinner = true, force = false) => {
+    if (showSpinner && customers.length === 0) setLoading(true);
     try {
-      const res = await fetch('/api/customers', { headers: authHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setCustomers(data);
-      }
+      const data = await cachedFetch<any[]>('/api/customers', {
+        headers: authHeaders(),
+        ttl: CACHE_TTL.long,
+        force,
+      });
+      if (data) setCustomers(data);
     } catch (e) {}
     if (showSpinner) setLoading(false);
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchCustomers(true), 0);
-    return () => clearTimeout(timer);
+    fetchCustomers(true);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,9 +69,9 @@ export default function CustomersPage() {
         headers: authHeaders(),
         body: JSON.stringify({ name: currentName, site: currentSite, gstNumber: currentGstNumber }),
       });
-      // Silent sync without spinner
-      fetchCustomers(false);
+      // Invalidate cache first, then force-fetch the fresh data
       window.dispatchEvent(new Event('bemsDataUpdated'));
+      fetchCustomers(false, true);
     } catch (e) {}
   };
 
@@ -88,9 +88,9 @@ export default function CustomersPage() {
 
     try {
       await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-      // Silent sync without spinner
-      fetchCustomers(false);
+      // Invalidate cache first, then force-fetch the fresh data
       window.dispatchEvent(new Event('bemsDataUpdated'));
+      fetchCustomers(false, true);
     } catch (e) {}
   };
 
@@ -110,8 +110,9 @@ export default function CustomersPage() {
     
     try {
       await fetch('/api/customers', { method: 'DELETE', headers: authHeaders() });
-      // Silent sync without spinner
-      fetchCustomers(false);
+      // Invalidate cache first, then force-fetch the fresh data
+      window.dispatchEvent(new Event('bemsDataUpdated'));
+      fetchCustomers(false, true);
     } catch (e) {}
   };
 

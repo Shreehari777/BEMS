@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Loader2, Trash2, Edit2, AlertCircle } from 'lucide-react';
 import { authHeaders } from '@/lib/auth';
+import { cachedFetch, CACHE_TTL } from '@/lib/api-cache';
 
 export default function VehiclesPage() {
   const numberRef = useRef<HTMLInputElement>(null);
@@ -18,23 +19,21 @@ export default function VehiclesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const fetchVehicles = async (showSpinner = true) => {
-    if (showSpinner) setLoading(true);
+  const fetchVehicles = async (showSpinner = true, force = false) => {
+    if (showSpinner && vehicles.length === 0) setLoading(true);
     try {
-      const res = await fetch('/api/vehicles', { headers: authHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setVehicles(data);
-      }
+      const data = await cachedFetch<any[]>('/api/vehicles', {
+        headers: authHeaders(),
+        ttl: CACHE_TTL.long,
+        force,
+      });
+      if (data) setVehicles(data);
     } catch (e) {}
     if (showSpinner) setLoading(false);
   };
 
   useEffect(() => {
-    const load = async () => {
-      await fetchVehicles(true);
-    };
-    load();
+    fetchVehicles(true);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,8 +63,9 @@ export default function VehiclesPage() {
         headers: authHeaders(),
         body: JSON.stringify({ number: currentNumber, driverName: currentDriver }),
       });
-      fetchVehicles(false);
+      // Invalidate cache first, then force-fetch the fresh data
       window.dispatchEvent(new Event('bemsDataUpdated'));
+      fetchVehicles(false, true);
     } catch (e) {}
   };
 
@@ -79,8 +79,9 @@ export default function VehiclesPage() {
     setVehicles(prev => prev.filter(v => v._id !== id));
     try {
       await fetch(`/api/vehicles/${id}`, { method: 'DELETE' });
-      fetchVehicles(false);
+      // Invalidate cache first, then force-fetch the fresh data
       window.dispatchEvent(new Event('bemsDataUpdated'));
+      fetchVehicles(false, true);
     } catch (e) {}
   };
 
@@ -99,7 +100,9 @@ export default function VehiclesPage() {
 
     try {
       await fetch('/api/vehicles', { method: 'DELETE', headers: authHeaders() });
-      fetchVehicles(false);
+      // Invalidate cache first, then force-fetch the fresh data
+      window.dispatchEvent(new Event('bemsDataUpdated'));
+      fetchVehicles(false, true);
     } catch (e) {}
   };
 

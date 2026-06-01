@@ -107,51 +107,56 @@ export async function POST(req: Request) {
     const userId = req.headers.get('x-user-id') || '';
     await dbConnect();
 
-    // ── Auto-create customer if new ──
+    // ── Auto-create customer and vehicle if new (Parallelized) ──
     const Customer = (await import('@/lib/models/Customer')).default;
-    let customer = await Customer.findOne({ name: { $regex: new RegExp(`^${data.customerName}$`, 'i') }, createdBy: userId });
-    if (!customer && data.customerName) {
-      customer = await Customer.create({ name: data.customerName, site: data.site || '', createdBy: userId });
+    const Vehicle = (await import('@/lib/models/Vehicle')).default;
+
+    const [customer, existingVehicle, recipe, settingsDoc, templateDoc] = await Promise.all([
+      data.customerName ? Customer.findOne({ name: { $regex: new RegExp(`^${data.customerName}$`, 'i') }, createdBy: userId }) : null,
+      data.vehicleNumber ? Vehicle.findOne({ number: { $regex: new RegExp(`^${data.vehicleNumber}$`, 'i') }, createdBy: userId }) : null,
+      Recipe.findOne({ grade: data.grade }).lean(),
+      Setting.findOne({ key: 'materialTolerances' }).lean(),
+      Setting.findOne({ key: 'challanInvoiceTemplate' }).lean(),
+    ]);
+
+    let finalCustomer = customer;
+    if (!finalCustomer && data.customerName) {
+      finalCustomer = await Customer.create({ name: data.customerName, site: data.site || '', createdBy: userId });
     }
 
-    let generatedOrderNumber = data.orderNumber;
-    if (customer) {
-      // Find the highest orderNumber currently in the database for this customer
-      const reports = await BatchReport.find({ 
-        customerName: { $regex: new RegExp(`^${customer.name}$`, 'i') }, 
-        createdBy: userId 
+    // Always compute order number dynamically from the database (ignore client value which may be stale)
+    let generatedOrderNumber = '';
+    if (data.customerName) {
+      // Find all reports for this customer to dynamically compute the true max order number
+      const existingReportsForCust = await BatchReport.find({
+        customerName: { $regex: new RegExp(`^${data.customerName}$`, 'i') },
+        createdBy: userId,
       }).select('orderNumber').lean();
-      
-      let maxOrder = 0;
-      reports.forEach(r => {
-        const num = parseInt(r.orderNumber, 10);
-        if (!isNaN(num) && num > maxOrder) {
-          maxOrder = num;
-        }
-      });
 
-      if (!generatedOrderNumber) {
-        generatedOrderNumber = String(maxOrder + 1);
-        customer.lastOrderNumber = maxOrder + 1;
-      } else {
-        const parsed = parseInt(generatedOrderNumber, 10);
-        customer.lastOrderNumber = !isNaN(parsed) ? Math.max(parsed, maxOrder) : maxOrder;
+      let dbMaxOrder = 0;
+      for (const r of existingReportsForCust) {
+        const num = parseInt(String(r.orderNumber), 10);
+        if (!isNaN(num)) {
+          dbMaxOrder = Math.max(dbMaxOrder, num);
+        }
       }
-      await customer.save();
-    } else if (!generatedOrderNumber) {
+
+      generatedOrderNumber = String(dbMaxOrder + 1);
+
+      // Also keep the static customer profile's lastOrderNumber updated for legacy compatibility
+      if (finalCustomer) {
+        const parsed = parseInt(generatedOrderNumber, 10);
+        finalCustomer.lastOrderNumber = !isNaN(parsed) ? Math.max(parsed, dbMaxOrder) : dbMaxOrder;
+        await finalCustomer.save();
+      }
+    } else {
       generatedOrderNumber = '1';
     }
 
-    // ── Auto-create vehicle if new ──
-    const Vehicle = (await import('@/lib/models/Vehicle')).default;
-    const existingVehicle = await Vehicle.findOne({ number: { $regex: new RegExp(`^${data.vehicleNumber}$`, 'i') }, createdBy: userId });
     if (!existingVehicle && data.vehicleNumber) {
       await Vehicle.create({ number: data.vehicleNumber.toUpperCase(), driverName: data.driverName || '', createdBy: userId });
     }
 
-    // ── Load recipe and tolerances ──
-    const recipe = await Recipe.findOne({ grade: data.grade });
-    const settingsDoc = await Setting.findOne({ key: 'materialTolerances' });
     const tolerances: Record<string, number> = settingsDoc?.value || {};
 
     const q = Number(data.quantity) || 0;
@@ -269,8 +274,7 @@ export async function POST(req: Request) {
         adjustedActuals[mat] = Math.round(setWeight + sign * offset);
       }
     });
-    // ── Load saved challan/invoice template defaults ──
-    const templateDoc = await Setting.findOne({ key: 'challanInvoiceTemplate' });
+    // ── Use template loaded in initial Promise.all ──
     const template = templateDoc?.value || {};
 
     // ── Build final report data ──
@@ -294,10 +298,10 @@ export async function POST(req: Request) {
       companyAddress: data.companyAddress || template.companyAddress || 'Office : A/p, Kharpudi (B), Khed City Road, Mandawala, Tal. Khed, Dist. Pune - 410505.',
       companyMobile: data.companyMobile || template.companyMobile || 'Mob.: 9325714072 | 9405818311',
       // Auto-populate customer fields from customer record
-      gstNumber: data.gstNumber || (customer?.gstNumber) || '',
-      customerAddress: data.customerAddress || (customer?.address) || '',
-      customerState: data.customerState || (customer?.state) || 'MAHARASHTRA',
-      customerStateCode: data.customerStateCode || (customer?.stateCode) || '27',
+      gstNumber: data.gstNumber || (finalCustomer?.gstNumber) || '',
+      customerAddress: data.customerAddress || (finalCustomer?.address) || '',
+      customerState: data.customerState || (finalCustomer?.state) || 'MAHARASHTRA',
+      customerStateCode: data.customerStateCode || (finalCustomer?.stateCode) || '27',
     };
 
     const report = await BatchReport.create(enrichedData);

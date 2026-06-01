@@ -15,5 +15,7 @@ const SubscriptionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+SubscriptionSchema.index({ userId: 1, createdAt: -1 });
+
 if (mongoose.models.Subscription) delete mongoose.models.Subscription;
 export default mongoose.model('Subscription', SubscriptionSchema);
