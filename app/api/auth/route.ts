@@ -85,7 +85,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
     }
 
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await (user as any).comparePassword(password);
     if (!isMatch) {
       return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
     }
