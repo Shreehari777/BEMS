@@ -15,7 +15,7 @@ const MATERIALS = [
   { id: 'stone10mm', label: '10MM' },
   { id: 'cem1', label: 'CEM1' },
   { id: 'cem2', label: 'CEM2' },
-  { id: 'flyAsh', label: 'FILL' },
+  { id: 'flyAsh', label: 'FLASH' },
   { id: 'water', label: 'WATER' },
   { id: 'watIce', label: 'WAT/I' },
   { id: 'silica', label: 'SILICA' },
@@ -378,6 +378,7 @@ export default function NewEntryPage() {
                 id="input-site"
                 type="text"
                 required
+                maxLength={150}
                 value={site}
                 ref={siteRef}
                 onChange={e => setSite(e.target.value)}
@@ -398,6 +399,7 @@ export default function NewEntryPage() {
                 id="input-driver-name"
                 type="text"
                 required
+                maxLength={100}
                 value={driverName}
                 ref={driverRef}
                 onChange={e => setDriverName(e.target.value)}
@@ -419,6 +421,7 @@ export default function NewEntryPage() {
                   id="input-start-time"
                   type="text"
                   required
+                  maxLength={25}
                   value={startTime}
                   ref={startTimeRef}
                   onChange={e => setStartTime(e.target.value)}
@@ -452,6 +455,7 @@ export default function NewEntryPage() {
                   id="input-stop-time"
                   type="text"
                   required
+                  maxLength={25}
                   value={stopTime}
                   ref={stopTimeRef}
                   onChange={e => setStopTime(e.target.value)}

@@ -62,6 +62,7 @@ export default function LoginPage() {
               id="username"
               type="text"
               required
+              maxLength={50}
               className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-slate-900"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -75,6 +76,7 @@ export default function LoginPage() {
               id="password"
               type="password"
               required
+              maxLength={50}
               className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-slate-900"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

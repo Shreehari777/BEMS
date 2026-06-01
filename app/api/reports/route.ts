@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import BatchReport from '@/lib/models/BatchReport';
 import Recipe from '@/lib/models/Recipe';
 import Setting from '@/lib/models/Setting';
+import { requireAuth, requireAdmin, escapeRegex } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,22 +58,33 @@ const DEFAULT_TOLERANCES: Record<string, number> = {
 // ─── GET ────────────────────────────────────────────────────────────────────
 export async function GET(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+    const userId = auth.session.userId;
+
     const url = new URL(req.url);
     const search = url.searchParams.get('search') || '';
     const startDate = url.searchParams.get('startDate');
     const endDate = url.searchParams.get('endDate');
     const page = parseInt(url.searchParams.get('page') || '0');
-    const limit = parseInt(url.searchParams.get('limit') || '0');
+    let limit = parseInt(url.searchParams.get('limit') || '0');
+
+    // Cap limit to prevent memory exhaustion
+    const MAX_LIMIT = 200;
+    if (limit > MAX_LIMIT) {
+      limit = MAX_LIMIT;
+    }
 
     await dbConnect();
-    const userId = req.headers.get('x-user-id') || '';
     let query: any = {};
-    // Filter by user if userId is provided
-    if (userId) {
+    
+    // Filter by user if they are not admin
+    if (auth.session.role !== 'admin') {
       query.createdBy = userId;
     }
+    
     if (search) {
-      query.customerName = { $regex: search, $options: 'i' };
+      query.customerName = { $regex: escapeRegex(search), $options: 'i' };
     }
     if (startDate || endDate) {
       query.date = {};
@@ -103,9 +115,13 @@ export async function GET(req: Request) {
 // ─── POST ───────────────────────────────────────────────────────────────────
 export async function POST(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+    const userId = auth.session.userId;
+
     const data = await req.json();
-    const userId = req.headers.get('x-user-id') || '';
     await dbConnect();
+
 
     // ── Auto-create customer and vehicle if new (Parallelized) ──
     const Customer = (await import('@/lib/models/Customer')).default;
@@ -314,6 +330,9 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
+
     await dbConnect();
     await BatchReport.deleteMany({});
     return NextResponse.json({ success: true, message: 'All reports deleted' });
@@ -321,3 +340,4 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

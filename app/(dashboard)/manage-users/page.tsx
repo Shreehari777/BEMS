@@ -448,7 +448,7 @@ export default function ManageUsersPage() {
       {/* Manual Activate / Manage Popup */}
       {activatingUserId && (() => {
         const existingSub = subscriptions[activatingUserId];
-        const isEditMode = !!existingSub;
+        const isEditMode = existingSub && (existingSub.status === 'active' || existingSub.status === 'trial') && (new Date(existingSub.endDate) > new Date());
         const userObj = users.find(u => u._id === activatingUserId);
         const displayName = userObj?.displayName || userObj?.username || '';
 
@@ -877,15 +877,15 @@ export default function ManageUsersPage() {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {user.role !== 'admin' && (() => {
-                        const hasSub = !!subscriptions[user._id];
+                        const sub = subscriptions[user._id];
+                        const hasActiveSub = sub && (sub.status === 'active' || sub.status === 'trial') && (new Date(sub.endDate) > new Date());
                         return (
                           <>
                             <button
                               onClick={() => {
                                 setActivatingUserId(user._id);
                                 setSelectedPlanId('');
-                                if (hasSub) {
-                                  const sub = subscriptions[user._id];
+                                if (hasActiveSub) {
                                   const now = new Date();
                                   const end = new Date(sub.endDate);
                                   const daysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
@@ -896,11 +896,11 @@ export default function ManageUsersPage() {
                                 }
                               }}
                               className={`p-2 rounded-lg transition-colors ${
-                                hasSub
+                                hasActiveSub
                                   ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
                                   : 'text-slate-400 hover:text-green-600 hover:bg-green-50'
                               }`}
-                              title={hasSub ? "Manage subscription / Edit remaining days" : "Activate subscription (offline payment)"}
+                              title={hasActiveSub ? "Manage subscription / Edit remaining days" : "Activate subscription (offline payment)"}
                             >
                               <CreditCard className="w-4 h-4" />
                             </button>

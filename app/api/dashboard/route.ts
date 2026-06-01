@@ -4,12 +4,17 @@ import BatchReport from '@/lib/models/BatchReport';
 import User from '@/lib/models/User';
 import Subscription from '@/lib/models/Subscription';
 import Payment from '@/lib/models/Payment';
+import { requireAdmin } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
+
     await dbConnect();
+
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());

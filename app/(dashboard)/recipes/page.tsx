@@ -13,7 +13,7 @@ const MATERIALS = [
   { id: 'stone10mm', label: '10MM' },
   { id: 'cem1', label: 'CEM1' },
   { id: 'cem2', label: 'CEM2' },
-  { id: 'flyAsh', label: 'FILL' },
+  { id: 'flyAsh', label: 'FLASH' },
   { id: 'water', label: 'WATER' },
   { id: 'watIce', label: 'WAT/I' },
   { id: 'silica', label: 'Silica' },

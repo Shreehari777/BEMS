@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import SubscriptionPlan from '@/lib/models/SubscriptionPlan';
 import Payment from '@/lib/models/Payment';
+import { requireAuth } from '@/lib/session';
 
 // Prevent Next.js/Turbopack from evaluating this route at build time
 export const dynamic = 'force-dynamic';
@@ -24,10 +25,18 @@ async function getRazorpayInstance() {
 
 export async function POST(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
     const { planId, userId } = await req.json();
 
     if (!planId || !userId) {
       return NextResponse.json({ error: 'planId and userId required' }, { status: 400 });
+    }
+
+    // IDOR protection check
+    if (auth.session.role !== 'admin' && auth.session.userId !== userId) {
+      return NextResponse.json({ error: 'Forbidden: Cannot create orders for another user' }, { status: 403 });
     }
 
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -75,3 +84,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message || 'Failed to create order' }, { status: 500 });
   }
 }
+

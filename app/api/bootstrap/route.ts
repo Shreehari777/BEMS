@@ -4,15 +4,19 @@ import Customer from '@/lib/models/Customer';
 import Vehicle from '@/lib/models/Vehicle';
 import Recipe from '@/lib/models/Recipe';
 import BatchReport from '@/lib/models/BatchReport';
+import { requireAuth } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 /** Single round-trip for New Entry initial load (one DB connection). */
 export async function GET(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+    const userId = auth.session.userId;
+
     await dbConnect();
-    const userId = req.headers.get('x-user-id') || '';
-    const ownerQuery = userId ? { createdBy: userId } : {};
+    const ownerQuery = auth.session.role === 'admin' ? {} : { createdBy: userId };
 
     const [customers, vehicles, recipes, lastReport, reports] = await Promise.all([
       Customer.find(ownerQuery).sort({ createdAt: -1 }).lean(),
@@ -49,3 +53,4 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

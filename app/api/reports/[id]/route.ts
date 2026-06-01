@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import BatchReport from '@/lib/models/BatchReport';
+import { requireAuth, escapeRegex } from '@/lib/session';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
     const { id } = await params;
 
     // Reserved path — handled by /api/next-docket (dynamic [id] would match otherwise)
@@ -13,14 +17,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     await dbConnect();
     
-    const report = await BatchReport.findById(id).lean();
+    const report = await BatchReport.findById(id).lean() as any;
     if (!report) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    // IDOR protection check
+    if (auth.session.role !== 'admin' && report.createdBy !== auth.session.userId) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to view this report' }, { status: 403 });
+    }
 
     // Auto-populate blank customer fields from Customer profile on GET
     if (report.customerName && report.createdBy) {
       const Customer = (await import('@/lib/models/Customer')).default;
       const customer = await Customer.findOne({
-        name: { $regex: new RegExp(`^${report.customerName}$`, 'i') },
+        name: { $regex: new RegExp(`^${escapeRegex(report.customerName)}$`, 'i') },
         createdBy: report.createdBy
       }).lean();
 
@@ -40,12 +49,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
     const { id } = await params;
     const body = await req.json();
     
     await dbConnect();
+
+    // Check ownership (IDOR check)
+    const existingReport = await BatchReport.findById(id).lean() as any;
+    if (!existingReport) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    if (auth.session.role !== 'admin' && existingReport.createdBy !== auth.session.userId) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to update this report' }, { status: 403 });
+    }
     
-    const report = await BatchReport.findByIdAndUpdate(id, body, { new: true });
+    const report = await BatchReport.findByIdAndUpdate(id, body, { new: true }) as any;
     if (!report) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     // Update customer fields in the background
@@ -54,7 +74,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const userId = report.createdBy;
     if (customerName && userId) {
       await Customer.findOneAndUpdate(
-        { name: { $regex: new RegExp(`^${customerName}$`, 'i') }, createdBy: userId },
+        { name: { $regex: new RegExp(`^${escapeRegex(customerName)}$`, 'i') }, createdBy: userId },
         {
           $set: {
             address: report.customerAddress || '',
@@ -76,14 +96,25 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
     const { id } = await params;
     
     await dbConnect();
+
+    // Check ownership (IDOR check)
+    const existingReport = await BatchReport.findById(id).lean() as any;
+    if (!existingReport) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    if (auth.session.role !== 'admin' && existingReport.createdBy !== auth.session.userId) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to delete this report' }, { status: 403 });
+    }
     
-    const report = await BatchReport.findByIdAndDelete(id);
-    if (!report) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    await BatchReport.findByIdAndDelete(id);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
+

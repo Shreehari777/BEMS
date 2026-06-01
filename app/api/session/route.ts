@@ -6,6 +6,7 @@ import Recipe from '@/lib/models/Recipe';
 import BatchReport from '@/lib/models/BatchReport';
 import Subscription from '@/lib/models/Subscription';
 import SubscriptionPlan from '@/lib/models/SubscriptionPlan';
+import { requireAuth } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +16,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+    const userId = auth.session.userId;
+    const role = auth.session.role;
+
     await dbConnect();
-    const url = new URL(req.url);
-    const userId = req.headers.get('x-user-id') || url.searchParams.get('userId') || '';
-    const role = url.searchParams.get('role') || '';
 
     const plans = await SubscriptionPlan.find({ isActive: true }).sort({ order: 1, price: 1 }).lean();
 
@@ -88,3 +91,4 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

@@ -144,6 +144,7 @@ export default function CustomersPage() {
                 <input
                   type="text"
                   required
+                  maxLength={100}
                   value={name}
                   ref={nameRef}
                   onChange={e => setName(e.target.value)}
@@ -162,6 +163,7 @@ export default function CustomersPage() {
                 <input
                   type="text"
                   required
+                  maxLength={150}
                   value={site}
                   ref={siteRef}
                   onChange={e => setSite(e.target.value)}
@@ -179,6 +181,7 @@ export default function CustomersPage() {
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">GST Number</label>
                 <input
                   type="text"
+                  maxLength={25}
                   value={gstNumber}
                   ref={gstRef}
                   onChange={e => setGstNumber(e.target.value)}

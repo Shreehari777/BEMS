@@ -3,9 +3,13 @@ import dbConnect from '@/lib/db';
 import Payment from '@/lib/models/Payment';
 import Subscription from '@/lib/models/Subscription';
 import crypto from 'crypto';
+import { requireAuth } from '@/lib/session';
 
 export async function POST(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
     const {
       razorpayOrderId,
       razorpayPaymentId,
@@ -19,6 +23,11 @@ export async function POST(req: Request) {
 
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
       return NextResponse.json({ error: 'Missing payment details' }, { status: 400 });
+    }
+
+    // IDOR protection check
+    if (auth.session.role !== 'admin' && auth.session.userId !== userId) {
+      return NextResponse.json({ error: 'Forbidden: Cannot verify payments for another user' }, { status: 403 });
     }
 
     // Verify Razorpay signature (HMAC SHA256)
@@ -80,6 +89,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, subscription: sub });
   } catch (error: any) {
     console.error('Verify payment error:', error);
-    return NextResponse.json({ error: error.message || 'Payment verification failed' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to verify payment' }, { status: 500 });
   }
 }
+

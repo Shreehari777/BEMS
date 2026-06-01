@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 interface AutocompleteProps {
   items: any[];
@@ -18,9 +18,14 @@ export function Autocomplete({ items, displayKey, value, onChange, onSelect, pla
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const filteredItems = value ? items.filter(item => 
-    item[displayKey]?.toLowerCase().includes(value.toLowerCase())
-  ).slice(0, 5) : [];
+  const filteredItems = useMemo(() => {
+    if (!value) return [];
+    const valLower = value.toLowerCase();
+    return items.filter(item => 
+      item[displayKey]?.toLowerCase().includes(valLower)
+    ).slice(0, 5);
+  }, [items, value, displayKey]);
+
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

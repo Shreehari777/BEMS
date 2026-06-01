@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Recipe from '@/lib/models/Recipe';
+import { requireAuth } from '@/lib/session';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
     const { id } = await params;
     const body = await req.json();
 
@@ -19,6 +23,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
     const { id } = await params;
 
     await dbConnect();
@@ -30,3 +37,4 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
+

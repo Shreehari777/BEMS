@@ -26,6 +26,7 @@ import {
   invalidateCache,
   peekCache,
   safeCachedFetch,
+  cachedFetch,
   seedCache,
   setupCacheInvalidationListener,
 } from '@/lib/api-cache';
@@ -176,17 +177,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     if (!initialSubChecked) setSubLoading(true);
 
-    const data = await safeCachedFetch<{
-      subscription: any;
-      plans: any[];
-      bootstrap?: any;
-    }>(sessionUrl, { headers, ttl: CACHE_TTL.plans, force });
+    try {
+      const data = await cachedFetch<{
+        subscription: any;
+        plans: any[];
+        bootstrap?: any;
+      }>(sessionUrl, { headers, ttl: CACHE_TTL.plans, force });
 
-    if (!data) {
-      setDbOffline(true);
-    } else {
       applySession(data, headers);
       seedCache(sessionUrl, data, { headers });
+      setDbOffline(false);
+    } catch (err: any) {
+      if (err.message && err.message.includes('401')) {
+        localStorage.removeItem('bems_user');
+        router.push('/login');
+        return;
+      }
+      setDbOffline(true);
     }
 
     setSubLoading(false);
@@ -262,16 +269,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener('subscriptionUpdated', handleSubUpdate);
   }, [currentUser]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth', { method: 'DELETE' });
+    } catch (e) {
+      console.error('Logout API call failed:', e);
+    }
     localStorage.removeItem('bems_user');
     router.push('/login');
   };
+
 
   if (!authChecked || !currentUser) return null;
 
   const isAdmin = currentUser.role === 'admin';
   const isSubscribed = subStatus === 'active' || subStatus === 'trial';
-  const isBlocked = !isAdmin && !isSubscribed;
+  const isBlocked = initialSubChecked && !isAdmin && !isSubscribed;
   const menuItems = isAdmin ? ADMIN_ITEMS : USER_ITEMS;
 
   const renderNavItem = (item: (typeof menuItems)[number]) => {

@@ -2,14 +2,18 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Customer from '@/lib/models/Customer';
 import BatchReport from '@/lib/models/BatchReport';
+import { requireAuth } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+    const userId = auth.session.userId;
+
     await dbConnect();
-    const userId = req.headers.get('x-user-id') || '';
-    const query = userId ? { createdBy: userId } : {};
+    const query = auth.session.role === 'admin' ? {} : { createdBy: userId };
     const customers = await Customer.find(query).sort({ createdAt: -1 }).lean();
 
     const reports = await BatchReport.find(query).select('customerName orderNumber').lean();
@@ -34,8 +38,11 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+    const userId = auth.session.userId;
+
     const data = await req.json();
-    const userId = req.headers.get('x-user-id') || '';
     await dbConnect();
     const customer = await Customer.create({ ...data, createdBy: userId });
     return NextResponse.json(customer);
@@ -46,12 +53,16 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+    const userId = auth.session.userId;
+
     await dbConnect();
-    const userId = req.headers.get('x-user-id') || '';
-    const query = userId ? { createdBy: userId } : {};
+    const query = auth.session.role === 'admin' ? {} : { createdBy: userId };
     await Customer.deleteMany(query);
     return NextResponse.json({ success: true, message: 'Customers deleted' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

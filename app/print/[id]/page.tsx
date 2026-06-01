@@ -1292,7 +1292,7 @@ export default function PrintReportPage() {
                 <polygon points="35,100 65,100 95,0 65,0" fill="#007236" />
                 <rect x="0" y="0" width="100" height="100" fill="none" stroke="black" strokeWidth="4" />
               </svg>
-              <div className="system-info" style={{ fontSize: '18px', fontWeight: 'bold' }}>MCI 70 N Control System Ver 3.0</div>
+              <div className="system-info" style={{ fontSize: '18px', fontWeight: 'bold' }}>MCI 70 N Control System Ver 3.1</div>
             </div>
             <div style={{ fontSize: '13px', marginTop: '4px', textAlign: 'left', lineHeight: '1.2' }}>SCHWING<br />Stetter</div>
           </div>
@@ -1390,7 +1390,7 @@ export default function PrintReportPage() {
               </tr>
               <tr>
                 <th>20MM</th><th>SAND</th><th>Moi</th><th>SAND1</th><th>10MM</th>
-                <th>CEM1</th><th>FILL</th>
+                <th>CEM1</th><th>FLASH</th>
                 <th>WATER</th><th>WAT/I</th>
                 <th>Silica</th><th>ADM1</th><th>ADM2</th>
               </tr>

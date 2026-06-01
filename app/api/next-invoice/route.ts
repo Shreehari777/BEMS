@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import BatchReport from '@/lib/models/BatchReport';
+import { requireAuth } from '@/lib/session';
 
-// GET /api/next-invoice?createdBy=user123
+// GET /api/next-invoice
 // Returns the next invoice number across all customers (common count)
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const createdBy = searchParams.get('createdBy');
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+    const userId = auth.session.userId;
 
     await dbConnect();
 
@@ -16,8 +18,8 @@ export async function GET(req: Request) {
       invoiceEnabled: true,
       invoiceNumber: { $gt: 0 },
     };
-    if (createdBy) {
-      query.createdBy = createdBy;
+    if (auth.session.role !== 'admin') {
+      query.createdBy = userId;
     }
 
     const lastInvoice = await BatchReport.findOne(query)
@@ -32,3 +34,4 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

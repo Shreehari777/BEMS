@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import SubscriptionPlan from '@/lib/models/SubscriptionPlan';
+import { requireAdmin } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 // GET — List plans (active only for users, all for admin)
 export async function GET(req: Request) {
   try {
-    await dbConnect();
     const url = new URL(req.url);
     const all = url.searchParams.get('all');
+    
+    if (all === 'true') {
+      const auth = await requireAdmin(req);
+      if (!auth.authorized) return auth.response;
+    }
+
+    await dbConnect();
     const query = all === 'true' ? {} : { isActive: true };
     const plans = await SubscriptionPlan.find(query).sort({ order: 1, price: 1 });
     return NextResponse.json(plans);
@@ -21,6 +28,9 @@ export async function GET(req: Request) {
 // POST — Create a new plan (admin only)
 export async function POST(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
+
     const data = await req.json();
     await dbConnect();
     const plan = await SubscriptionPlan.create(data);
@@ -33,6 +43,9 @@ export async function POST(req: Request) {
 // PATCH — Update a plan (admin only)
 export async function PATCH(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
+
     const { id, ...updates } = await req.json();
     if (!id) return NextResponse.json({ error: 'Plan ID required' }, { status: 400 });
 
@@ -48,6 +61,9 @@ export async function PATCH(req: Request) {
 // DELETE — Delete a plan (admin only)
 export async function DELETE(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Plan ID required' }, { status: 400 });
@@ -59,3 +75,4 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

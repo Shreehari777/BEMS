@@ -136,6 +136,7 @@ export default function VehiclesPage() {
                 <input
                   type="text"
                   required
+                  maxLength={25}
                   value={number}
                   ref={numberRef}
                   onChange={e => setNumber(e.target.value.toUpperCase())}
@@ -154,6 +155,7 @@ export default function VehiclesPage() {
                 <input
                   type="text"
                   required
+                  maxLength={100}
                   value={driverName}
                   ref={driverRef}
                   onChange={e => setDriverName(e.target.value)}

@@ -132,5 +132,7 @@ BatchReportSchema.index({ createdBy: 1, date: -1, docketNumber: -1 });
 BatchReportSchema.index({ createdBy: 1, customerName: 1 });
 BatchReportSchema.index({ createdBy: 1, docketNumber: -1 });
 BatchReportSchema.index({ createdBy: 1, customerName: 1, date: -1 });
+BatchReportSchema.index({ docketNumber: 1, createdBy: 1 }, { unique: true, sparse: true });
 
 export default mongoose.models.BatchReport || mongoose.model('BatchReport', BatchReportSchema);
+

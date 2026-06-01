@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import User from '@/lib/models/User';
+import { requireAdmin } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 // GET — List only regular users (excludes admin, passwords excluded)
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
+
     await dbConnect();
     const users = await User.find({ role: 'user' }, '-password').sort({ createdAt: -1 });
     return NextResponse.json(users);
@@ -18,6 +22,9 @@ export async function GET() {
 // POST — Create a new user (admin only)
 export async function POST(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
+
     const { username, password, displayName } = await req.json();
 
     if (!username || !password) {
@@ -58,6 +65,9 @@ export async function POST(req: Request) {
 // DELETE — Delete a user by ID (admin only, cannot delete admin)
 export async function DELETE(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
@@ -76,8 +86,23 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'Cannot delete the admin account' }, { status: 403 });
     }
 
-    await User.findByIdAndDelete(id);
-    return NextResponse.json({ success: true, message: 'User deleted' });
+    // Cascade delete related records
+    const BatchReport = (await import('@/lib/models/BatchReport')).default;
+    const Customer = (await import('@/lib/models/Customer')).default;
+    const Vehicle = (await import('@/lib/models/Vehicle')).default;
+    const Subscription = (await import('@/lib/models/Subscription')).default;
+    const Payment = (await import('@/lib/models/Payment')).default;
+
+    await Promise.all([
+      User.findByIdAndDelete(id),
+      BatchReport.deleteMany({ createdBy: id }),
+      Customer.deleteMany({ createdBy: id }),
+      Vehicle.deleteMany({ createdBy: id }),
+      Subscription.deleteMany({ userId: id }),
+      Payment.deleteMany({ userId: id }),
+    ]);
+
+    return NextResponse.json({ success: true, message: 'User and all related data deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -86,6 +111,9 @@ export async function DELETE(req: Request) {
 // PATCH — Toggle user active status (admin only) + freeze/unfreeze subscription days
 export async function PATCH(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
+
     const body = await req.json();
     const { id } = body;
 
@@ -154,3 +182,4 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

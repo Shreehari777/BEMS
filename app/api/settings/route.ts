@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Setting from '@/lib/models/Setting';
+import { requireAuth } from '@/lib/session';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
     await dbConnect();
     const settings = await Setting.find({});
     const result: any = {};
@@ -18,6 +22,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
     const body = await req.json();
     const { key, value } = body;
 
@@ -34,3 +41,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
+

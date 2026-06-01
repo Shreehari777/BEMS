@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Subscription from '@/lib/models/Subscription';
 import Setting from '@/lib/models/Setting';
+import { requireAuth, requireAdmin } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,12 +16,23 @@ export async function GET(req: Request) {
 
     // Admin: get all subscriptions
     if (all === 'true') {
+      const auth = await requireAdmin(req);
+      if (!auth.authorized) return auth.response;
+
       const subs = await Subscription.find({}).sort({ createdAt: -1 });
       return NextResponse.json(subs);
     }
 
     if (!userId) {
       return NextResponse.json({ error: 'userId required' }, { status: 400 });
+    }
+
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
+    // Enforce IDOR protection: non-admins can only check their own status
+    if (auth.session.role !== 'admin' && auth.session.userId !== userId) {
+      return NextResponse.json({ error: 'Forbidden: You can only view your own subscription' }, { status: 403 });
     }
 
     // Find user's latest subscription
@@ -61,6 +73,14 @@ export async function POST(req: Request) {
     const { userId, action, planId, planName, amount, durationDays } = await req.json();
     if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
 
+    const auth = await requireAuth(req);
+    if (!auth.authorized) return auth.response;
+
+    // IDOR check: users can only initialize trials / activate for themselves unless admin
+    if (auth.session.role !== 'admin' && auth.session.userId !== userId) {
+      return NextResponse.json({ error: 'Forbidden: Unauthorized action on this user subscription' }, { status: 403 });
+    }
+
     await dbConnect();
 
     if (action === 'start-trial') {
@@ -100,14 +120,26 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'durationDays required' }, { status: 400 });
       }
 
+      const now = new Date();
+      // Check if there is an existing active or trial subscription that hasn't expired yet
+      const activeSub = await Subscription.findOne({
+        userId,
+        status: { $in: ['trial', 'active'] },
+        endDate: { $gt: now },
+      }).sort({ endDate: -1 });
+
+      let newEndDate: Date;
+      if (activeSub) {
+        newEndDate = new Date(activeSub.endDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
+      } else {
+        newEndDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+      }
+
       // Mark old subscriptions as expired
       await Subscription.updateMany(
         { userId, status: { $in: ['trial', 'active'] } },
         { status: 'expired' }
       );
-
-      const now = new Date();
-      const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
       const sub = await Subscription.create({
         userId,
@@ -115,7 +147,7 @@ export async function POST(req: Request) {
         planName: planName || 'Custom Manual Plan',
         status: 'active',
         startDate: now,
-        endDate,
+        endDate: newEndDate,
         trialUsed: true, // consuming trial since they paid
         amount: amount || 0,
       });
@@ -132,6 +164,9 @@ export async function POST(req: Request) {
 // PATCH — Admin: manually extend or update subscription
 export async function PATCH(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
+
     const { userId, action, extraDays, remainingDays, planName, amount } = await req.json();
     if (!userId) {
       return NextResponse.json({ error: 'userId required' }, { status: 400 });
@@ -173,3 +208,4 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
