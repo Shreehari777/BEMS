@@ -66,12 +66,18 @@ export async function GET(req: Request) {
 
       // Dynamically compute max order number per customer from actual reports
       const maxOrderByCustomer = new Map<string, number>();
+      let maxOrderNumber = 0;
       for (const r of allReports) {
         const key = String(r.customerName || '').toLowerCase();
         const num = parseInt(String(r.orderNumber), 10);
+        if (!Number.isNaN(num)) {
+          maxOrderNumber = Math.max(maxOrderNumber, num);
+        }
         if (!key || Number.isNaN(num)) continue;
         maxOrderByCustomer.set(key, Math.max(maxOrderByCustomer.get(key) || 0, num));
       }
+
+      const nextOrderNumber = maxOrderNumber + 1;
 
       bootstrap = {
         customers: customers.map((c) => ({
@@ -83,6 +89,7 @@ export async function GET(req: Request) {
         nextDocketNumber: lastReport
           ? parseInt(String(lastReport.docketNumber), 10) + 1 || 1
           : 1,
+        nextOrderNumber,
       };
     }
 

@@ -27,12 +27,18 @@ export async function GET(req: Request) {
     ]);
 
     const maxOrderByCustomer = new Map<string, number>();
+    let maxOrderNumber = 0;
     for (const r of reports) {
       const key = String(r.customerName || '').toLowerCase();
       const num = parseInt(String(r.orderNumber), 10);
+      if (!Number.isNaN(num)) {
+        maxOrderNumber = Math.max(maxOrderNumber, num);
+      }
       if (!key || Number.isNaN(num)) continue;
       maxOrderByCustomer.set(key, Math.max(maxOrderByCustomer.get(key) || 0, num));
     }
+
+    const nextOrderNumber = maxOrderNumber + 1;
 
     const customersWithOrders = customers.map((c) => ({
       ...c,
@@ -48,6 +54,7 @@ export async function GET(req: Request) {
       vehicles,
       recipes,
       nextDocketNumber,
+      nextOrderNumber,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

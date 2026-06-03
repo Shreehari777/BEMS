@@ -66,12 +66,16 @@ export default function NewEntryPage() {
       vehicles: any[];
       recipes: any[];
       nextDocketNumber: number;
+      nextOrderNumber?: number;
     }) => {
       const headers = authHeaders();
       setCustomers(payload.customers);
       setVehicles(payload.vehicles);
       setRecipes(payload.recipes);
       setDocketNumber(String(payload.nextDocketNumber).padStart(3, '0'));
+      if (payload.nextOrderNumber !== undefined) {
+        setOrderNumber(String(payload.nextOrderNumber));
+      }
       setGrade(payload.recipes.length > 0 ? payload.recipes[0].grade : '');
 
       seedCache('/api/customers', payload.customers, { headers });
@@ -88,6 +92,7 @@ export default function NewEntryPage() {
             vehicles: any[];
             recipes: any[];
             nextDocketNumber: number;
+            nextOrderNumber?: number;
           }>('/api/bootstrap', { headers })
         : null;
       if (cached) {
@@ -102,6 +107,7 @@ export default function NewEntryPage() {
           vehicles: any[];
           recipes: any[];
           nextDocketNumber: number;
+          nextOrderNumber?: number;
         }>('/api/bootstrap', { headers, ttl: CACHE_TTL.long, force });
 
         if (payload) {
@@ -123,19 +129,6 @@ export default function NewEntryPage() {
     window.addEventListener('bemsDataUpdated', handleUpdate);
     return () => window.removeEventListener('bemsDataUpdated', handleUpdate);
   }, []);
-
-  useEffect(() => {
-    if (!customerName) {
-      setOrderNumber('');
-      return;
-    }
-    const existing = customers.find(c => c.name.toLowerCase() === customerName.toLowerCase());
-    if (existing) {
-      setOrderNumber(String((existing.lastOrderNumber || 0) + 1));
-    } else {
-      setOrderNumber('1');
-    }
-  }, [customerName, customers]);
 
   const handleCustomerSelect = (customer: any) => {
     setSite(customer.site);

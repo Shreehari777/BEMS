@@ -142,31 +142,26 @@ export async function POST(req: Request) {
 
     // Always compute order number dynamically from the database (ignore client value which may be stale)
     let generatedOrderNumber = '';
-    if (data.customerName) {
-      // Find all reports for this customer to dynamically compute the true max order number
-      const existingReportsForCust = await BatchReport.find({
-        customerName: { $regex: new RegExp(`^${data.customerName}$`, 'i') },
-        createdBy: userId,
-      }).select('orderNumber').lean();
+    // Find all reports created by this operator to dynamically compute the true max order number globally
+    const existingReports = await BatchReport.find({
+      createdBy: userId,
+    }).select('orderNumber').lean();
 
-      let dbMaxOrder = 0;
-      for (const r of existingReportsForCust) {
-        const num = parseInt(String(r.orderNumber), 10);
-        if (!isNaN(num)) {
-          dbMaxOrder = Math.max(dbMaxOrder, num);
-        }
+    let dbMaxOrder = 0;
+    for (const r of existingReports) {
+      const num = parseInt(String(r.orderNumber), 10);
+      if (!isNaN(num)) {
+        dbMaxOrder = Math.max(dbMaxOrder, num);
       }
+    }
 
-      generatedOrderNumber = String(dbMaxOrder + 1);
+    generatedOrderNumber = String(dbMaxOrder + 1);
 
-      // Also keep the static customer profile's lastOrderNumber updated for legacy compatibility
-      if (finalCustomer) {
-        const parsed = parseInt(generatedOrderNumber, 10);
-        finalCustomer.lastOrderNumber = !isNaN(parsed) ? Math.max(parsed, dbMaxOrder) : dbMaxOrder;
-        await finalCustomer.save();
-      }
-    } else {
-      generatedOrderNumber = '1';
+    // Also keep the static customer profile's lastOrderNumber updated for legacy compatibility
+    if (finalCustomer) {
+      const parsed = parseInt(generatedOrderNumber, 10);
+      finalCustomer.lastOrderNumber = !isNaN(parsed) ? Math.max(parsed, dbMaxOrder) : dbMaxOrder;
+      await finalCustomer.save();
     }
 
     if (!existingVehicle && data.vehicleNumber) {
@@ -330,12 +325,14 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const auth = await requireAdmin(req);
+    const auth = await requireAuth(req);
     if (!auth.authorized) return auth.response;
+    const userId = auth.session.userId;
 
     await dbConnect();
-    await BatchReport.deleteMany({});
-    return NextResponse.json({ success: true, message: 'All reports deleted' });
+    const query = auth.session.role === 'admin' ? {} : { createdBy: userId };
+    await BatchReport.deleteMany(query);
+    return NextResponse.json({ success: true, message: 'Reports deleted' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

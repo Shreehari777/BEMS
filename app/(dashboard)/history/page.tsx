@@ -97,11 +97,17 @@ export default function HistoryPage() {
     setConfirmDialog({ open: false, type: 'single' });
 
     try {
+      let res;
       if (dialogType === 'single' && dialogId) {
-        await fetch(`/api/reports/${dialogId}`, { method: 'DELETE', headers: authHeaders() });
+        res = await fetch(`/api/reports/${dialogId}`, { method: 'DELETE', headers: authHeaders() });
       } else if (dialogType === 'all') {
-        await fetch('/api/reports', { method: 'DELETE', headers: authHeaders() });
+        res = await fetch('/api/reports', { method: 'DELETE', headers: authHeaders() });
       }
+      
+      if (res && !res.ok) {
+        throw new Error('Failed to delete');
+      }
+
       invalidateCache('/api/reports');
       window.dispatchEvent(new Event('bemsDataUpdated'));
     } catch (e) {
