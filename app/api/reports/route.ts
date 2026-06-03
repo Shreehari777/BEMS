@@ -70,9 +70,16 @@ export async function GET(req: Request) {
     let limit = parseInt(url.searchParams.get('limit') || '0');
 
     // Cap limit to prevent memory exhaustion
-    const MAX_LIMIT = 200;
-    if (limit > MAX_LIMIT) {
-      limit = MAX_LIMIT;
+    const MAX_PAGE_LIMIT = 200;
+    const MAX_EXPORT_LIMIT = 10000;
+    if (page > 0) {
+      if (limit <= 0 || limit > MAX_PAGE_LIMIT) {
+        limit = MAX_PAGE_LIMIT;
+      }
+    } else {
+      if (limit <= 0 || limit > MAX_EXPORT_LIMIT) {
+        limit = MAX_EXPORT_LIMIT;
+      }
     }
 
     await dbConnect();
@@ -103,6 +110,8 @@ export async function GET(req: Request) {
 
     if (page > 0 && limit > 0) {
       mongoQuery = mongoQuery.skip((page - 1) * limit).limit(limit);
+    } else if (limit > 0) {
+      mongoQuery = mongoQuery.limit(limit);
     }
 
     const reports = await mongoQuery.lean();
@@ -114,12 +123,41 @@ export async function GET(req: Request) {
 
 // ─── POST ───────────────────────────────────────────────────────────────────
 export async function POST(req: Request) {
+  let data: any;
   try {
     const auth = await requireAuth(req);
     if (!auth.authorized) return auth.response;
     const userId = auth.session.userId;
 
-    const data = await req.json();
+    data = await req.json();
+
+    // Server-side validation
+    const docketNum = Number(data.docketNumber);
+    if (!docketNum || !Number.isInteger(docketNum) || docketNum <= 0) {
+      return NextResponse.json({ error: 'Docket Number must be a positive integer' }, { status: 400 });
+    }
+
+    const qty = Number(data.quantity);
+    if (isNaN(qty) || qty <= 0) {
+      return NextResponse.json({ error: 'Quantity must be a positive number' }, { status: 400 });
+    }
+
+    if (!data.customerName || typeof data.customerName !== 'string' || data.customerName.trim() === '') {
+      return NextResponse.json({ error: 'Customer Name is required' }, { status: 400 });
+    }
+
+    if (!data.site || typeof data.site !== 'string' || data.site.trim() === '') {
+      return NextResponse.json({ error: 'Site/Location is required' }, { status: 400 });
+    }
+
+    if (!data.vehicleNumber || typeof data.vehicleNumber !== 'string' || data.vehicleNumber.trim() === '') {
+      return NextResponse.json({ error: 'Vehicle Number is required' }, { status: 400 });
+    }
+
+    if (!data.grade || typeof data.grade !== 'string' || data.grade.trim() === '') {
+      return NextResponse.json({ error: 'Grade is required' }, { status: 400 });
+    }
+
     await dbConnect();
 
 
@@ -128,12 +166,16 @@ export async function POST(req: Request) {
     const Vehicle = (await import('@/lib/models/Vehicle')).default;
 
     const [customer, existingVehicle, recipe, settingsDoc, templateDoc] = await Promise.all([
-      data.customerName ? Customer.findOne({ name: { $regex: new RegExp(`^${data.customerName}$`, 'i') }, createdBy: userId }) : null,
-      data.vehicleNumber ? Vehicle.findOne({ number: { $regex: new RegExp(`^${data.vehicleNumber}$`, 'i') }, createdBy: userId }) : null,
+      data.customerName ? Customer.findOne({ name: { $regex: new RegExp(`^${escapeRegex(data.customerName)}$`, 'i') }, createdBy: userId }) : null,
+      data.vehicleNumber ? Vehicle.findOne({ number: { $regex: new RegExp(`^${escapeRegex(data.vehicleNumber)}$`, 'i') }, createdBy: userId }) : null,
       Recipe.findOne({ grade: data.grade }).lean(),
       Setting.findOne({ key: 'materialTolerances' }).lean(),
       Setting.findOne({ key: 'challanInvoiceTemplate' }).lean(),
     ]);
+
+    if (!recipe) {
+      return NextResponse.json({ error: `Recipe grade "${data.grade}" does not exist in recipes` }, { status: 400 });
+    }
 
     let finalCustomer = customer;
     if (!finalCustomer && data.customerName) {
@@ -141,21 +183,14 @@ export async function POST(req: Request) {
     }
 
     // Always compute order number dynamically from the database (ignore client value which may be stale)
-    let generatedOrderNumber = '';
-    // Find all reports created by this operator to dynamically compute the true max order number globally
-    const existingReports = await BatchReport.find({
-      createdBy: userId,
-    }).select('orderNumber').lean();
-
-    let dbMaxOrder = 0;
-    for (const r of existingReports) {
-      const num = parseInt(String(r.orderNumber), 10);
-      if (!isNaN(num)) {
-        dbMaxOrder = Math.max(dbMaxOrder, num);
-      }
-    }
-
-    generatedOrderNumber = String(dbMaxOrder + 1);
+    // Optimized: use aggregation to find max order number instead of loading all reports
+    const maxOrderAgg = await BatchReport.aggregate([
+      { $match: { createdBy: userId } },
+      { $addFields: { orderNum: { $toInt: { $ifNull: ['$orderNumber', '0'] } } } },
+      { $group: { _id: null, maxOrder: { $max: '$orderNum' } } },
+    ]);
+    const dbMaxOrder = maxOrderAgg.length > 0 ? (maxOrderAgg[0].maxOrder || 0) : 0;
+    const generatedOrderNumber = String(dbMaxOrder + 1);
 
     // Also keep the static customer profile's lastOrderNumber updated for legacy compatibility
     if (finalCustomer) {
@@ -319,6 +354,10 @@ export async function POST(req: Request) {
     return NextResponse.json(report);
   } catch (error: any) {
     console.error('API Error:', error);
+    if (error.code === 11000) {
+      const docketMsg = data?.docketNumber ? ` ${data.docketNumber}` : '';
+      return NextResponse.json({ error: `Docket number${docketMsg} already exists` }, { status: 400 });
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

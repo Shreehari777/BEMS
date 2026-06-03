@@ -5,9 +5,12 @@ import Vehicle from '@/lib/models/Vehicle';
 import BatchReport from '@/lib/models/BatchReport';
 import Recipe from '@/lib/models/Recipe';
 import { subDays } from 'date-fns';
+import { requireAdmin } from '@/lib/session';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const auth = await requireAdmin(req);
+    if (!auth.authorized) return auth.response;
     if (!process.env.MONGODB_URI) {
       return NextResponse.json({ error: "MONGODB_URI not found. Please connect MongoDB in settings first." }, { status: 400 });
     }

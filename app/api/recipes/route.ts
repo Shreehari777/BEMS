@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Recipe from '@/lib/models/Recipe';
-import { requireAuth } from '@/lib/session';
+import { requireAuth, requireAdmin } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function DELETE(req: Request) {
   try {
-    const auth = await requireAuth(req);
+    const auth = await requireAdmin(req);
     if (!auth.authorized) return auth.response;
 
     const { searchParams } = new URL(req.url);

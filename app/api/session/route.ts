@@ -56,25 +56,26 @@ export async function GET(req: Request) {
     let bootstrap = null;
     if (userId && role !== 'admin') {
       const ownerQuery = { createdBy: userId };
-      const [customers, vehicles, recipes, lastReport, allReports] = await Promise.all([
+      const [customers, vehicles, recipes, lastReport, maxOrderAgg] = await Promise.all([
         Customer.find(ownerQuery).sort({ createdAt: -1 }).lean(),
         Vehicle.find(ownerQuery).sort({ createdAt: -1 }).lean(),
         Recipe.find({}).sort({ createdAt: -1 }).lean(),
         BatchReport.findOne(ownerQuery).sort({ docketNumber: -1 }).select('docketNumber').lean(),
-        BatchReport.find(ownerQuery).select('customerName orderNumber').lean(),
+        BatchReport.aggregate([
+          { $match: ownerQuery },
+          { $addFields: { orderNum: { $toInt: { $ifNull: ['$orderNumber', '0'] } } } },
+          { $group: { _id: '$customerName', maxOrder: { $max: '$orderNum' } } },
+        ]),
       ]);
 
-      // Dynamically compute max order number per customer from actual reports
+      // Dynamically compute max order number per customer from aggregation results
       const maxOrderByCustomer = new Map<string, number>();
       let maxOrderNumber = 0;
-      for (const r of allReports) {
-        const key = String(r.customerName || '').toLowerCase();
-        const num = parseInt(String(r.orderNumber), 10);
-        if (!Number.isNaN(num)) {
-          maxOrderNumber = Math.max(maxOrderNumber, num);
-        }
-        if (!key || Number.isNaN(num)) continue;
-        maxOrderByCustomer.set(key, Math.max(maxOrderByCustomer.get(key) || 0, num));
+      for (const item of maxOrderAgg) {
+        const key = String(item._id || '').toLowerCase();
+        const num = item.maxOrder || 0;
+        if (num > maxOrderNumber) maxOrderNumber = num;
+        if (key) maxOrderByCustomer.set(key, num);
       }
 
       const nextOrderNumber = maxOrderNumber + 1;

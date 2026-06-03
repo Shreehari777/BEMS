@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Setting from '@/lib/models/Setting';
-import { requireAuth } from '@/lib/session';
+import { requireAuth, requireAdmin } from '@/lib/session';
 
 export async function GET(req: Request) {
   try {
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const auth = await requireAuth(req);
+    const auth = await requireAdmin(req);
     if (!auth.authorized) return auth.response;
 
     const body = await req.json();

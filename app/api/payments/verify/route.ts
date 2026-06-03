@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Payment from '@/lib/models/Payment';
 import Subscription from '@/lib/models/Subscription';
+import SubscriptionPlan from '@/lib/models/SubscriptionPlan';
 import crypto from 'crypto';
 import { requireAuth } from '@/lib/session';
 
@@ -15,10 +16,6 @@ export async function POST(req: Request) {
       razorpayPaymentId,
       razorpaySignature,
       userId,
-      planId,
-      planName,
-      amount,
-      durationDays,
     } = await req.json();
 
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
@@ -42,15 +39,28 @@ export async function POST(req: Request) {
 
     await dbConnect();
 
-    // Update payment record
-    await Payment.findOneAndUpdate(
+    // Update payment record and return the updated document
+    const payment = await Payment.findOneAndUpdate(
       { razorpayOrderId },
       {
         razorpayPaymentId,
         razorpaySignature,
         status: 'paid',
-      }
+      },
+      { new: true }
     );
+
+    if (!payment) {
+      return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
+    }
+
+    // Look up actual subscription plan to get durationDays and verify details
+    const plan = await SubscriptionPlan.findById(payment.planId);
+    if (!plan) {
+      return NextResponse.json({ error: 'Subscription plan not found' }, { status: 404 });
+    }
+
+    const durationDays = plan.durationDays;
 
     // Check if there is an existing active or trial subscription that hasn't expired yet
     const now = new Date();
@@ -77,13 +87,13 @@ export async function POST(req: Request) {
 
     const sub = await Subscription.create({
       userId,
-      planId,
-      planName: planName || '',
+      planId: payment.planId,
+      planName: payment.planName || plan.name || '',
       status: 'active',
       startDate: now,
       endDate: newEndDate,
       trialUsed: true,
-      amount: amount || 0,
+      amount: payment.amount || plan.price || 0,
     });
 
     return NextResponse.json({ success: true, subscription: sub });
