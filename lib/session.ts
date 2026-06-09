@@ -2,25 +2,26 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import * as jose from 'jose';
 
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  throw new Error('FATAL: JWT_SECRET environment variable is missing in production!');
+function getJwtSecret() {
+  if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: JWT_SECRET environment variable is missing in production!');
+  }
+  return new TextEncoder().encode(
+    process.env.JWT_SECRET || 'bems-dev-secret-change-in-production-surjanrmc'
+  );
 }
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'bems-dev-secret-change-in-production-surjanrmc'
-);
 
 export async function signToken(payload: { userId: string; role: string; username: string }) {
   return await new jose.SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function verifyToken(token: string) {
   try {
-    const { payload } = await jose.jwtVerify(token, JWT_SECRET);
+    const { payload } = await jose.jwtVerify(token, getJwtSecret());
     return payload as { userId: string; role: string; username: string };
   } catch (error) {
     return null;
